@@ -8,11 +8,15 @@ import xml.etree.ElementTree as ET
 from sklearn.ensemble import RandomForestClassifier
 from textblob import TextBlob
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
-# PAGE CONFIGURATION & DARK THEME STYLING
+# PAGE CONFIGURATION & REAL-TIME AUTO-REFRESH
 # ==========================================
 st.set_page_config(page_title="PSX AI Trader Terminal", layout="wide", page_icon="📈")
+
+# Auto-refresh the entire dashboard every 10 seconds (10,000 ms)
+st_autorefresh(interval=10000, key="realtime_psx_feed")
 
 st.markdown("""
     <style>
@@ -174,7 +178,7 @@ model = train_model()
 # 6. HEADER & METRIC OVERVIEW
 # ==========================================
 st.title("⚡ PSX Quant Terminal")
-st.caption("AI-Powered Equity Signal Engine & Risk Allocator")
+st.caption("AI-Powered Equity Signal Engine & Risk Allocator (Real-Time Feed)")
 
 # Sidebar Controls
 st.sidebar.header("💼 Risk Management Controls")

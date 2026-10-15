@@ -176,13 +176,13 @@ model = train_model()
 st.title("⚡ PSX Quant Terminal")
 st.caption("AI-Powered Equity Signal Engine & Risk Allocator")
 
-# Sidebar
+# Sidebar Controls
 st.sidebar.header("💼 Risk Management Controls")
 total_capital = st.sidebar.number_input("Total Capital (PKR)", min_value=10000, value=500000, step=25000)
 risk_per_trade = st.sidebar.slider("Max Capital Allocation Per Trade (%)", 1, 20, 5)
 min_confidence = st.sidebar.slider("Minimum AI Confidence Threshold (%)", 50, 95, 80)
 
-# Top KPI Summary Bar
+# Top Summary KPIs
 max_trade_cap = total_capital * (risk_per_trade / 100.0)
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Portfolio Capital", f"Rs. {total_capital:,.0f}")
@@ -194,21 +194,39 @@ st.write("---")
 # ==========================================
 # 7. MARKET ANALYSIS & CHARTS
 # ==========================================
-tickers = ["MCB.KA", "FFC.KA", "MEBL.KA", "OGDC.KA", "ENGRO.KA"]
+tickers = ["MCB.KA", "FFC.KA", "MEBL.KA", "OGDC.KA", "SYS.KA"]
 results = []
 
 with st.spinner("Analyzing live PSX candlestick feeds & computing AI confidence..."):
     for ticker in tickers:
+        clean_name = ticker.replace(".KA", "")
         stock = yf.Ticker(ticker)
-        hist = stock.history(period="6mo")
         
+        try:
+            hist = stock.history(period="6mo")
+        except Exception:
+            hist = pd.DataFrame()
+            
+        # Fallback card if Yahoo Finance fails to send data for a ticker
         if hist.empty or len(hist) < 50:
+            st.warning(f"⚠️ **{clean_name}**: Live market feed temporarily delayed from Yahoo Finance. Retrying on next refresh...")
+            results.append({
+                "Ticker": clean_name,
+                "Price (PKR)": "N/A",
+                "RSI (14D)": "N/A",
+                "MACD Trend": "N/A",
+                "News Sentiment": "N/A",
+                "P/E Ratio": "N/A",
+                "AI Confidence": "N/A",
+                "Signal": "🟡 OFFLINE",
+                "Capital Allocation": "Rs. 0"
+            })
+            st.write("---")
             continue
             
         current_price = hist['Close'].iloc[-1]
-        clean_name = ticker.replace(".KA", "")
         
-        # Technicals
+        # Technical Indicators
         ma50 = hist['Close'].rolling(window=50).mean().iloc[-1]
         above_50ma = 1 if current_price > ma50 else 0
         
@@ -222,12 +240,15 @@ with st.spinner("Analyzing live PSX candlestick feeds & computing AI confidence.
         macd_bullish = "Bullish 🟢" if macd_val > signal_val else "Bearish 🔴"
         
         # Valuation & Sentiment
-        info = stock.info
-        pe_ratio = info.get('trailingPE', 12.0)
-        if pe_ratio is None or np.isnan(pe_ratio):
+        try:
+            info = stock.info
+            pe_ratio = info.get('trailingPE', 12.0)
+            if pe_ratio is None or np.isnan(pe_ratio):
+                pe_ratio = 12.0
+        except Exception:
             pe_ratio = 12.0
+            
         pe_undervalued = 1 if pe_ratio < 10.0 else 0
-        
         sent_score, sent_label = fetch_news_sentiment(ticker)
         
         # AI ML Prediction
@@ -256,7 +277,7 @@ with st.spinner("Analyzing live PSX candlestick feeds & computing AI confidence.
             "Capital Allocation": f"Rs. {allocated:,.0f}" if allocated > 0 else "Rs. 0"
         })
         
-        # Render Individual Stock Cards
+        # Render Stock Container Card
         with st.container():
             st.markdown(f"### {clean_name} — **Current Price: Rs. {current_price:.2f}**")
             
@@ -267,7 +288,7 @@ with st.spinner("Analyzing live PSX candlestick feeds & computing AI confidence.
             c4.metric("MACD Trend", macd_bullish)
             c5.metric("Capital Target", f"Rs. {allocated:,.0f}" if allocated > 0 else "Rs. 0")
             
-            # Expandable Interactive Chart
+            # Interactive Plotly Candlestick Chart
             with st.expander(f"📉 View Technical Candlestick Chart for {clean_name}"):
                 fig = build_candlestick_chart(hist, clean_name)
                 st.plotly_chart(fig, use_container_width=True)

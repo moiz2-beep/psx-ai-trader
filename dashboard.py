@@ -194,7 +194,7 @@ st.write("---")
 # ==========================================
 # 7. MARKET ANALYSIS & CHARTS
 # ==========================================
-tickers = ["MCB.KA", "FFC.KA", "MEBL.KA", "OGDC.KA", "HUBC.KA"]
+tickers = ["MCB.KA", "FFC.KA", "MEBL.KA", "OGDC.KA", "ENGRO.KA"]
 results = []
 
 with st.spinner("Analyzing live PSX candlestick feeds & computing AI confidence..."):

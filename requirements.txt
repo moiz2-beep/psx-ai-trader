@@ -6,3 +6,5 @@ scikit-learn
 textblob
 plotly
 streamlit-autorefresh
+transformers
+torch

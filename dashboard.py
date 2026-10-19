@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from sklearn.ensemble import RandomForestClassifier
 from transformers import pipeline
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 import warnings
@@ -15,7 +16,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ==========================================
-# 1. PAGE CONFIG & STYLING
+# 1. PAGE CONFIG & INSTITUTIONAL STYLING
 # ==========================================
 st.set_page_config(
     page_title="PSX Quant Terminal | Institutional Suite", 
@@ -27,7 +28,7 @@ st.set_page_config(
 # Smooth 30-second silent background refresh
 st_autorefresh(interval=30000, key="psx_terminal_refresh")
 
-# Institutional Dark Theme CSS Styling
+# Dark Theme CSS
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14; color: #E0E6ED; font-family: 'Inter', sans-serif; }
@@ -39,7 +40,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Top SECP Compliance Header
+# Regulatory Notice
 st.markdown("""
     <div class="secp-banner">
         ⚖️ <strong>SECP REGULATORY NOTICE:</strong> This quantitative terminal operates under algorithmic research models. Signals generated are non-advisory and intended strictly for educational & algorithmic evaluation. Capital allocation carries financial market risk.
@@ -159,7 +160,7 @@ def train_real_market_model(tickers):
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_psx_batch(tickers):
     try:
-        return yf.download(tickers, period="6mo", group_by='ticker', progress=False)
+        return yf.download(tickers, period="1y", group_by='ticker', progress=False)
     except Exception:
         return pd.DataFrame()
 
@@ -179,24 +180,24 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### System Active Status:")
     st.markdown("🟢 **FinBERT Neural NLP**")
-    st.markdown("🟢 **PSX Batch Feed (10 Tickers)**")
-    st.markdown("🟢 **ATR Risk Multipliers**")
+    st.markdown("🟢 **PSX Candlestick Feed**")
+    st.markdown("🟢 **Moving Averages (20/50/200)**")
     st.markdown("🟢 **SECP Regulatory Shield**")
 
 max_rupee_risk = total_capital * (risk_pct / 100)
 
 # ==========================================
-# 6. TABBED NAVIGATION (MULTI-PAGE UX)
+# 6. TABBED NAVIGATION
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📡 Live Execution Matrix", 
+    "📈 Interactive Candlestick Studio",
     "🧮 Institutional Calculators", 
-    "🗺️ PSX Financial Hubs Map", 
     "📜 Regulatory Compliance"
 ])
 
 # ------------------------------------------
-# TAB 1: LIVE QUANT TERMINAL
+# TAB 1: LIVE QUANT MATRIX
 # ------------------------------------------
 with tab1:
     c1, c2, c3 = st.columns(3)
@@ -296,18 +297,104 @@ with tab1:
             st.info("Database logs initializing...")
 
 # ------------------------------------------
-# TAB 2: STANDALONE CALCULATORS
+# TAB 2: CANDLESTICK & TECHNICAL MA STUDIO
 # ------------------------------------------
 with tab2:
-    st.header("🧮 Standalone Quantitative Calculators")
-    st.caption("Perform isolated risk, position size, circuit lock, and yield calculations independently.")
+    st.header("📈 Interactive Candlestick & Moving Average Studio")
+    st.caption("Real-time candlestick price action, trading volume, and dynamic Moving Averages (20 SMA, 50 SMA, 200 SMA).")
+    
+    col_sel1, col_sel2 = st.columns([2, 2])
+    with col_sel1:
+        selected_asset = st.selectbox("Select PSX Stock", ["MCB", "FFC", "MEBL", "OGDC", "SYS", "HUBC", "UBL", "PPL", "ENGRO", "LUCK"], index=0)
+    with col_sel2:
+        chart_timeframe = st.selectbox("Select Timeframe", ["3 Months", "6 Months", "1 Year"], index=1)
+    
+    tf_map = {"3 Months": "3mo", "6 Months": "6mo", "1 Year": "1y"}
+    selected_ticker = f"{selected_asset}.KA"
+    
+    try:
+        stock_df = yf.Ticker(selected_ticker).history(period=tf_map[chart_timeframe])
+        if stock_df.empty:
+            st.error("Market data unavailable for selected ticker.")
+        else:
+            stock_df['SMA20'] = stock_df['Close'].rolling(20).mean()
+            stock_df['SMA50'] = stock_df['Close'].rolling(50).mean()
+            stock_df['SMA200'] = stock_df['Close'].rolling(200).mean()
+            
+            # Subplot: Row 1 = Candlestick & MAs, Row 2 = Volume
+            fig = make_subplots(
+                rows=2, cols=1, 
+                shared_xaxes=True, 
+                vertical_spacing=0.03, 
+                row_heights=[0.75, 0.25],
+                subplot_titles=(f"{selected_asset} Daily Price Chart & Moving Averages", "Trading Volume")
+            )
+            
+            # Candlestick
+            fig.add_trace(
+                go.Candlestick(
+                    x=stock_df.index,
+                    open=stock_df['Open'],
+                    high=stock_df['High'],
+                    low=stock_df['Low'],
+                    close=stock_df['Close'],
+                    name="Candles",
+                    increasing_line_color='#10B981', 
+                    decreasing_line_color='#EF4444'
+                ), row=1, col=1
+            )
+            
+            # Moving Averages
+            fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA20'], mode='lines', name='20 SMA', line=dict(color='#3B82F6', width=1.5)), row=1, col=1)
+            fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA50'], mode='lines', name='50 SMA', line=dict(color='#F59E0B', width=1.5)), row=1, col=1)
+            fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA200'], mode='lines', name='200 SMA', line=dict(color='#EC4899', width=1.5)), row=1, col=1)
+            
+            # Volume Bars
+            colors = ['#10B981' if c >= o else '#EF4444' for c, o in zip(stock_df['Close'], stock_df['Open'])]
+            fig.add_trace(go.Bar(x=stock_df.index, y=stock_df['Volume'], name="Volume", marker_color=colors, opacity=0.7), row=2, col=1)
+            
+            fig.update_layout(
+                xaxis_rangeslider_visible=False,
+                height=600,
+                paper_bgcolor="#0B0E14",
+                plot_bgcolor="#111827",
+                font=dict(color="#E0E6ED"),
+                margin=dict(l=10, r=10, t=40, b=10),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            fig.update_xaxes(gridcolor="#1F2937")
+            fig.update_yaxes(gridcolor="#1F2937")
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Latest Technical Highlights
+            last_close = stock_df['Close'].iloc[-1]
+            last_sma20 = stock_df['SMA20'].iloc[-1]
+            last_sma50 = stock_df['SMA50'].iloc[-1]
+            last_sma200 = stock_df['SMA200'].iloc[-1]
+            
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Latest Close", f"Rs. {last_close:.2f}")
+            m2.metric("20 SMA", f"Rs. {last_sma20:.2f}" if pd.notna(last_sma20) else "N/A")
+            m3.metric("50 SMA", f"Rs. {last_sma50:.2f}" if pd.notna(last_sma50) else "N/A")
+            m4.metric("200 SMA", f"Rs. {last_sma200:.2f}" if pd.notna(last_sma200) else "N/A")
+    except Exception as e:
+        st.error(f"Error loading chart data: {e}")
+
+# ------------------------------------------
+# TAB 3: STANDALONE CALCULATORS SUITE
+# ------------------------------------------
+with tab3:
+    st.header("🧮 Institutional Quantitative Calculators")
+    st.caption("Perform isolated risk, taxation, DCA, intrinsic value, and yield calculations standard in top-tier trading platforms.")
     
     col1, col2 = st.columns(2)
     
     with col1:
+        # 1. Dynamic Position Size Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("1. Dynamic Position Size Calculator")
-        c_equity = st.number_input("Account Balance (PKR)", 10000, 10000000, 500000, step=25000, key="c_eq")
+        c_equity = st.number_input("Account Balance (PKR)", 10000, 50000000, 500000, step=25000, key="c_eq")
         c_risk_p = st.number_input("Account Risk Limit (%)", 0.5, 10.0, 2.0, step=0.5, key="c_rp")
         c_entry = st.number_input("Planned Entry Price (PKR)", 1.0, 5000.0, 250.0, step=5.0, key="c_en")
         c_sl = st.number_input("Planned Stop-Loss Price (PKR)", 0.5, 5000.0, 240.0, step=5.0, key="c_sl")
@@ -322,6 +409,7 @@ with tab2:
         st.markdown(f"**Total Capital Required:** Rs. {total_trade_val:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # 2. Risk-to-Reward Ratio (RRR) Evaluator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("2. Risk-to-Reward Ratio (RRR) Evaluator")
         rrr_entry = st.number_input("Entry Price (PKR)", 1.0, 5000.0, 100.0, key="r_e")
@@ -341,9 +429,88 @@ with tab2:
             st.warning(f"⚠️ Sub-Optimal Trade Setup (Below 1:2 RRR). Required Win-Rate: {breakeven_winrate:.1f}%")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with col2:
+        # 3. PSX Net Profit, Brokerage Commission & CGT Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
-        st.subheader("3. PSX Daily Circuit Breaker Bands")
+        st.subheader("3. PSX Net Profit, Brokerage & Tax Calculator")
+        tx_buy_price = st.number_input("Buy Price (PKR)", 1.0, 5000.0, 100.0, key="tx_bp")
+        tx_sell_price = st.number_input("Sell Price (PKR)", 1.0, 5000.0, 120.0, key="tx_sp")
+        tx_qty = st.number_input("Share Quantity", 1, 1000000, 1000, key="tx_q")
+        tx_comm_rate = st.number_input("Broker Commission (%)", 0.01, 1.0, 0.15, step=0.01, key="tx_comm") / 100
+        tx_filer = st.radio("Tax Status", ["Filer (15% CGT)", "Non-Filer (Normal Slabs ~30%)"], key="tx_status")
+        
+        buy_val = tx_buy_price * tx_qty
+        sell_val = tx_sell_price * tx_qty
+        buy_comm = buy_val * tx_comm_rate
+        sell_comm = sell_val * tx_comm_rate
+        prov_sales_tax = (buy_comm + sell_comm) * 0.13
+        secp_cdc_fees = (buy_val + sell_val) * 0.0003
+        
+        gross_profit = sell_val - buy_val
+        total_trading_costs = buy_comm + sell_comm + prov_sales_tax + secp_cdc_fees
+        net_before_cgt = gross_profit - total_trading_costs
+        
+        cgt_rate = 0.15 if "Filer" in tx_filer else 0.30
+        cgt_tax = max(net_before_cgt * cgt_rate, 0.0) if net_before_cgt > 0 else 0.0
+        final_take_home = net_before_cgt - cgt_tax
+        
+        st.markdown(f"**Gross Profit:** Rs. {gross_profit:,.2f}")
+        st.markdown(f"**Brokerage Fees & Taxes:** Rs. {total_trading_costs:,.2f}")
+        st.markdown(f"**Capital Gains Tax (CGT):** Rs. {cgt_tax:,.2f}")
+        st.markdown(f"**Net Take-Home Profit:** <span style='color:#10B981; font-weight:bold;'>Rs. {final_take_home:,.2f}</span>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # 4. Dollar-Cost Averaging (DCA) / Average Price Calculator
+        st.markdown('<div class="calc-box">', unsafe_allow_html=True)
+        st.subheader("4. Dollar-Cost Averaging (DCA) / Average Price")
+        dca_p1 = st.number_input("Batch 1 Buy Price (PKR)", 1.0, 5000.0, 150.0, key="dca_p1")
+        dca_q1 = st.number_input("Batch 1 Quantity", 1, 100000, 500, key="dca_q1")
+        dca_p2 = st.number_input("Batch 2 Buy Price (Dip Price PKR)", 1.0, 5000.0, 110.0, key="dca_p2")
+        dca_q2 = st.number_input("Batch 2 Quantity", 1, 100000, 500, key="dca_q2")
+        
+        tot_qty = dca_q1 + dca_q2
+        tot_cost = (dca_p1 * dca_q1) + (dca_p2 * dca_q2)
+        avg_price = tot_cost / tot_qty
+        
+        st.markdown(f"**Total Shares Held:** `{tot_qty:,}` Shares")
+        st.markdown(f"**Total Capital Invested:** Rs. {tot_cost:,.2f}")
+        st.markdown(f"**New Average Cost Basis:** <span style='color:#3B82F6; font-weight:bold;'>Rs. {avg_price:.2f} per share</span>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        # 5. Benjamin Graham Intrinsic Value Calculator
+        st.markdown('<div class="calc-box">', unsafe_allow_html=True)
+        st.subheader("5. Benjamin Graham Intrinsic Value Calculator")
+        graham_eps = st.number_input("Earnings Per Share - EPS (PKR)", 0.1, 1000.0, 25.0, key="g_eps")
+        graham_bvps = st.number_input("Book Value Per Share - BVPS (PKR)", 0.1, 5000.0, 120.0, key="g_bvps")
+        graham_mkt = st.number_input("Current Market Price (PKR)", 1.0, 5000.0, 180.0, key="g_mkt")
+        
+        intrinsic_value = np.sqrt(22.5 * graham_eps * graham_bvps)
+        margin_of_safety = ((intrinsic_value - graham_mkt) / intrinsic_value) * 100 if intrinsic_value > 0 else 0
+        
+        st.markdown(f"**Graham Fair Intrinsic Value:** <span style='color:#10B981; font-weight:bold;'>Rs. {intrinsic_value:.2f}</span>", unsafe_allow_html=True)
+        if margin_of_safety > 0:
+            st.success(f"✅ Undervalued by {margin_of_safety:.1f}% (Margin of Safety)")
+        else:
+            st.warning(f"⚠️ Overvalued by {abs(margin_of_safety):.1f}% relative to Graham Formula")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # 6. CAGR & Compound Wealth Growth Calculator
+        st.markdown('<div class="calc-box">', unsafe_allow_html=True)
+        st.subheader("6. Compound Growth & CAGR Calculator")
+        cagr_init = st.number_input("Initial Principal (PKR)", 10000, 10000000, 100000, step=10000, key="cg_i")
+        cagr_years = st.slider("Investment Horizon (Years)", 1, 30, 5, key="cg_y")
+        cagr_rate = st.slider("Expected Annual Return (%)", 1.0, 50.0, 15.0, key="cg_r")
+        
+        future_val = cagr_init * ((1 + (cagr_rate / 100)) ** cagr_years)
+        total_wealth_gain = future_val - cagr_init
+        
+        st.markdown(f"**Projected Portfolio Value:** <span style='color:#10B981; font-weight:bold;'>Rs. {future_val:,.2f}</span>", unsafe_allow_html=True)
+        st.markdown(f"**Net Profit Generated:** Rs. {total_wealth_gain:,.2f}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # 7. PSX Daily Circuit Breaker Bands
+        st.markdown('<div class="calc-box">', unsafe_allow_html=True)
+        st.subheader("7. PSX Daily Circuit Breaker Bands")
         prev_close_price = st.number_input("Previous Session Close Price (PKR)", 1.0, 5000.0, 400.0, key="cb_p")
         
         upper_limit = prev_close_price * 1.075
@@ -355,8 +522,9 @@ with tab2:
         st.markdown(f"**Auto-Lock Warning Threshold (+6.5%):** Rs. {warning_upper:.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # 8. Dividend Yield & Passive Income Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
-        st.subheader("4. Dividend Yield & Dividend Cashflow")
+        st.subheader("8. Dividend Yield & Passive Income")
         div_price = st.number_input("Current Share Price (PKR)", 1.0, 5000.0, 350.0, key="d_p")
         div_annual = st.number_input("Annual Cash Dividend Per Share (PKR)", 0.0, 500.0, 35.0, key="d_a")
         div_shares = st.number_input("Number of Shares Held", 1, 100000, 1000, key="d_s")
@@ -367,57 +535,6 @@ with tab2:
         st.markdown(f"**Dividend Yield:** `{div_yield:.2f}%`")
         st.markdown(f"**Expected Annual Dividend Income:** <span style='color:#3B82F6; font-weight:bold;'>Rs. {total_payout:,.2f}</span>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-
-# ------------------------------------------
-# TAB 3: FINANCIAL HUBS & CORPORATE MAP
-# ------------------------------------------
-with tab3:
-    st.header("MAP: Pakistan Financial Ecosystem & Asset Headquarters")
-    st.caption("Geographic distribution of PSX Trading Hubs and Corporate Headquarters of tracked assets.")
-    
-    locations = pd.DataFrame([
-        {"Name": "Pakistan Stock Exchange (PSX HQ)", "Lat": 24.8532, "Lon": 67.0006, "Type": "Exchange Floor", "Details": "Karachi Stock Exchange Building, Stock Exchange Road"},
-        {"Name": "PSX Regional Office Lahore", "Lat": 31.5619, "Lon": 74.3107, "Type": "Exchange Floor", "Details": "LSE Plaza, Khayaban-e-Aiwan-e-Iqbal"},
-        {"Name": "PSX Regional Office Islamabad", "Lat": 33.7125, "Lon": 73.0592, "Type": "Exchange Floor", "Details": "ISE Towers, Jinnah Avenue"},
-        {"Name": "MCB Bank Ltd HQ", "Lat": 31.5640, "Lon": 74.3210, "Type": "Corporate HQ", "Details": "MCB Tower, Lahore"},
-        {"Name": "Fauji Fertilizer Co (FFC)", "Lat": 33.6007, "Lon": 73.0679, "Type": "Corporate HQ", "Details": "SONA Tower, Rawalpindi"},
-        {"Name": "Meezan Bank Ltd HQ", "Lat": 24.8607, "Lon": 67.0011, "Type": "Corporate HQ", "Details": "Meezan House, SITE, Karachi"},
-        {"Name": "OGDC Headquarters", "Lat": 33.7081, "Lon": 73.0560, "Type": "Corporate HQ", "Details": "OGDCL House, Blue Area, Islamabad"},
-        {"Name": "Systems Limited (SYS) HQ", "Lat": 31.4700, "Lon": 74.4100, "Type": "Corporate HQ", "Details": "Software Technology Park, Lahore"},
-        {"Name": "Hub Power Co (HUBC)", "Lat": 24.8200, "Lon": 67.0300, "Type": "Corporate HQ", "Details": "Ocean Tower, Clifton, Karachi"},
-        {"Name": "United Bank Ltd (UBL)", "Lat": 24.8510, "Lon": 67.0020, "Type": "Corporate HQ", "Details": "UBL Tower, I.I. Chundrigar Road, Karachi"},
-        {"Name": "Pakistan Petroleum (PPL)", "Lat": 24.8550, "Lon": 67.0040, "Type": "Corporate HQ", "Details": "PIDC House, Dr. Ziauddin Ahmed Road, Karachi"},
-        {"Name": "Engro Corporation HQ", "Lat": 24.8190, "Lon": 67.0280, "Type": "Corporate HQ", "Details": "The Harbour Front Building, Clifton, Karachi"},
-        {"Name": "Lucky Cement HQ", "Lat": 24.8210, "Lon": 67.0290, "Type": "Corporate HQ", "Details": "Main Clifton, Karachi"}
-    ])
-    
-    try:
-        if hasattr(px, "scatter_map"):
-            fig_map = px.scatter_map(
-                locations, lat="Lat", lon="Lon", hover_name="Name", hover_data=["Type", "Details"],
-                color="Type", color_discrete_map={"Exchange Floor": "#EF4444", "Corporate HQ": "#3B82F6"},
-                zoom=5, height=550
-            )
-            fig_map.update_layout(map_style="open-street-map", margin={"r": 0, "t": 0, "l": 0, "b": 0}, paper_bgcolor="#0B0E14")
-        elif hasattr(px, "scatter_mapbox"):
-            fig_map = px.scatter_mapbox(
-                locations, lat="Lat", lon="Lon", hover_name="Name", hover_data=["Type", "Details"],
-                color="Type", color_discrete_map={"Exchange Floor": "#EF4444", "Corporate HQ": "#3B82F6"},
-                zoom=5, height=550
-            )
-            fig_map.update_layout(mapbox_style="open-street-map", margin={"r": 0, "t": 0, "l": 0, "b": 0}, paper_bgcolor="#0B0E14")
-        else:
-            raise AttributeError("Map API missing")
-    except Exception:
-        fig_map = px.scatter_geo(
-            locations, lat="Lat", lon="Lon", hover_name="Name", hover_data=["Type", "Details"],
-            color="Type", color_discrete_map={"Exchange Floor": "#EF4444", "Corporate HQ": "#3B82F6"},
-            height=550
-        )
-        fig_map.update_geos(fitbounds="locations", visible=True)
-        fig_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, paper_bgcolor="#0B0E14")
-    
-    st.plotly_chart(fig_map, use_container_width=True)
 
 # ------------------------------------------
 # TAB 4: SECP REGULATORY COMPLIANCE

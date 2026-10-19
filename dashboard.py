@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ==========================================
-# 1. PAGE CONFIG & BACKGROUND STYLING
+# 1. PAGE CONFIG & STYLING
 # ==========================================
 st.set_page_config(
     page_title="PSX Quant Terminal | Institutional Suite", 
@@ -24,16 +24,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Smooth 30-Second Refresh (Cached background update prevents UI jumps)
+# Smooth 30-second silent background refresh
 st_autorefresh(interval=30000, key="psx_terminal_refresh")
 
-# Institutional Dark Theme CSS
+# Institutional Dark Theme CSS Styling
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14; color: #E0E6ED; font-family: 'Inter', sans-serif; }
     .secp-banner { background-color: #161B22; border-left: 4px solid #D97706; padding: 12px; font-size: 13px; color: #D1D5DB; margin-bottom: 15px; border-radius: 4px; }
     .calc-box { background-color: #161B2E; border: 1px solid #232D4B; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    .stat-card { background: linear-gradient(135deg, #1E2640 0%, #111827 100%); padding: 16px; border-radius: 8px; border: 1px solid #374151; }
     .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] { background-color: #111827; border-radius: 6px; padding: 8px 16px; color: #9CA3AF; }
     .stTabs [aria-selected="true"] { background-color: #1F2937 !important; color: #3B82F6 !important; font-weight: bold; }
@@ -48,7 +47,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. DATABASE LOGGING
+# 2. DATABASE LOGGING ENGINE
 # ==========================================
 def init_db():
     conn = sqlite3.connect("trades.db")
@@ -64,10 +63,13 @@ def init_db():
     conn.close()
 
 def log_signal(ticker, price, conf, cap, sl, tp, status):
-    conn = sqlite3.connect("trades.db")
-    conn.cursor().execute("INSERT INTO signals (ticker, price, ai_confidence, capital_allocated, stop_loss, take_profit, status) VALUES (?, ?, ?, ?, ?, ?, ?)", (ticker, price, conf, cap, sl, tp, status))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect("trades.db")
+        conn.cursor().execute("INSERT INTO signals (ticker, price, ai_confidence, capital_allocated, stop_loss, take_profit, status) VALUES (?, ?, ?, ?, ?, ?, ?)", (ticker, price, conf, cap, sl, tp, status))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 init_db()
 
@@ -86,7 +88,7 @@ def compute_atr(high, low, close, period=14):
     return tr.rolling(period).mean()
 
 # ==========================================
-# 4. CACHED AI & DATA FETCHING (No UI Flicker)
+# 4. CACHED AI & DATA FETCHING
 # ==========================================
 @st.cache_resource(show_spinner=False)
 def load_finbert():
@@ -94,7 +96,7 @@ def load_finbert():
 
 finbert = load_finbert()
 
-@st.cache_data(ttl=60, show_spinner=False) # Caching news sentiment for 60 seconds
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_finbert_sentiment(ticker):
     clean_ticker = ticker.replace(".KA", "")
     url = f"https://news.google.com/rss/search?q={clean_ticker}+PSX+stock+finance&hl=en-PK&gl=PK&ceid=PK:en"
@@ -115,43 +117,51 @@ def fetch_finbert_sentiment(ticker):
         if avg_score > 0.2: return avg_score, "Bullish 🟢"
         elif avg_score < -0.2: return avg_score, "Bearish 🔴"
         return avg_score, "Neutral ⚪"
-    except:
+    except Exception:
         return 0.0, "Neutral ⚪"
 
-@st.cache_data(ttl=86400, show_spinner=False) # Train once a day
+@st.cache_data(ttl=86400, show_spinner=False)
 def train_real_market_model(tickers):
     X_data, y_data = [], []
     for ticker in tickers:
         try:
             df = yf.download(ticker, period="2y", progress=False)
-            if len(df) < 100: continue
+            if df.empty or len(df) < 100: continue
             
-            df['MA50'] = df['Close'].rolling(50).mean()
-            df['Above_MA'] = np.where(df['Close'] > df['MA50'], 1, 0)
-            df['RSI'] = compute_rsi(df['Close'])
-            df['RSI_Oversold'] = np.where(df['RSI'] < 45, 1, 0)
+            close_s = df['Close'].squeeze()
+            ma50 = close_s.rolling(50).mean()
+            above_ma = np.where(close_s > ma50, 1, 0)
+            rsi = compute_rsi(close_s)
+            rsi_over = np.where(rsi < 45, 1, 0)
             
-            df['Future_Return'] = df['Close'].shift(-10) / df['Close'] - 1
-            df['Target'] = np.where(df['Future_Return'] > 0.05, 1, 0)
+            future_ret = close_s.shift(-10) / close_s - 1
+            target = np.where(future_ret > 0.05, 1, 0)
             
-            df.dropna(inplace=True)
-            for _, row in df.iterrows():
+            temp = pd.DataFrame({
+                'Above_MA': above_ma,
+                'RSI_Oversold': rsi_over,
+                'Target': target
+            }).dropna()
+
+            for _, row in temp.iterrows():
                 X_data.append([row['Above_MA'], 1, 0, row['RSI_Oversold']])
                 y_data.append(row['Target'])
-        except: continue
+        except Exception:
+            continue
         
-    if not X_data: X_data, y_data = [[1,1,0.5,1], [0,0,-0.5,0]], [1, 0]
+    if not X_data or len(set(y_data)) < 2:
+        X_data, y_data = [[1,1,0.5,1], [0,0,-0.5,0]], [1, 0]
         
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(np.array(X_data), np.array(y_data))
     return model
 
-@st.cache_data(ttl=30, show_spinner=False) # Batch fetch cached for 30s
+@st.cache_data(ttl=30, show_spinner=False)
 def fetch_psx_batch(tickers):
     try:
         return yf.download(tickers, period="6mo", group_by='ticker', progress=False)
-    except:
-        return {}
+    except Exception:
+        return pd.DataFrame()
 
 # ==========================================
 # 5. SIDEBAR CONTROL PANEL
@@ -203,14 +213,20 @@ with tab1:
 
     for ticker in tickers:
         clean_name = ticker.replace(".KA", "")
+        hist = pd.DataFrame()
         
         try:
-            if len(tickers) > 1 and ticker in batch_data:
-                hist = batch_data[ticker].dropna()
-            else:
-                hist = yf.Ticker(ticker).history(period="6mo")
-        except:
+            if isinstance(batch_data, pd.DataFrame) and not batch_data.empty:
+                if isinstance(batch_data.columns, pd.MultiIndex) and ticker in batch_data.columns.levels[0]:
+                    hist = batch_data[ticker].dropna()
+        except Exception:
             hist = pd.DataFrame()
+
+        if hist.empty or len(hist) < 20:
+            try:
+                hist = yf.Ticker(ticker).history(period="6mo")
+            except Exception:
+                hist = pd.DataFrame()
             
         if hist.empty or len(hist) < 20:
             results.append({
@@ -219,23 +235,27 @@ with tab1:
             })
             continue
             
-        close = float(hist['Close'].iloc[-1])
-        prev_close = float(hist['Close'].iloc[-2])
+        close_series = hist['Close'].squeeze()
+        high_series = hist['High'].squeeze()
+        low_series = hist['Low'].squeeze()
+
+        close = float(close_series.iloc[-1])
+        prev_close = float(close_series.iloc[-2])
         
         pct_change = abs((close - prev_close) / prev_close) * 100
         circuit_lock = True if pct_change >= 6.5 else False
         
-        ma50 = hist['Close'].rolling(50).mean().iloc[-1]
+        ma50 = float(close_series.rolling(50).mean().iloc[-1])
         above_50ma = 1 if close > ma50 else 0
-        current_rsi = compute_rsi(hist['Close']).iloc[-1]
+        current_rsi = float(compute_rsi(close_series).iloc[-1])
         rsi_over = 1 if current_rsi < 45 else 0
-        current_atr = compute_atr(hist['High'], hist['Low'], hist['Close']).iloc[-1]
+        current_atr = float(compute_atr(high_series, low_series, close_series).iloc[-1])
         
         pe_under = 1
         sent_score, sent_label = fetch_finbert_sentiment(ticker)
         
         features = np.array([[above_50ma, pe_under, sent_score, rsi_over]])
-        confidence = model.predict_proba(features)[0][1] * 100
+        confidence = float(model.predict_proba(features)[0][1] * 100)
         
         stop_loss = close - (1.5 * current_atr)
         take_profit = close + (3.0 * current_atr)
@@ -268,12 +288,15 @@ with tab1:
     st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
 
     with st.expander("📂 View Backend Execution Database (trades.db)"):
-        conn = sqlite3.connect("trades.db")
-        st.dataframe(pd.read_sql_query("SELECT * FROM signals ORDER BY id DESC LIMIT 10", conn), hide_index=True)
-        conn.close()
+        try:
+            conn = sqlite3.connect("trades.db")
+            st.dataframe(pd.read_sql_query("SELECT * FROM signals ORDER BY id DESC LIMIT 10", conn), hide_index=True)
+            conn.close()
+        except Exception:
+            st.info("Database logs initializing...")
 
 # ------------------------------------------
-# TAB 2: SEPARATE INSTITUTIONAL CALCULATORS
+# TAB 2: STANDALONE CALCULATORS
 # ------------------------------------------
 with tab2:
     st.header("🧮 Standalone Quantitative Calculators")
@@ -349,7 +372,7 @@ with tab2:
 # TAB 3: FINANCIAL HUBS & CORPORATE MAP
 # ------------------------------------------
 with tab3:
-    st.header("🗺️ Pakistan Financial Ecosystem & Asset Headquarters")
+    st.header("MAP: Pakistan Financial Ecosystem & Asset Headquarters")
     st.caption("Geographic distribution of PSX Trading Hubs and Corporate Headquarters of tracked assets.")
     
     locations = pd.DataFrame([
@@ -368,24 +391,31 @@ with tab3:
         {"Name": "Lucky Cement HQ", "Lat": 24.8210, "Lon": 67.0290, "Type": "Corporate HQ", "Details": "Main Clifton, Karachi"}
     ])
     
-    fig_map = px.scatter_mapbox(
-        locations,
-        lat="Lat",
-        lon="Lon",
-        hover_name="Name",
-        hover_data=["Type", "Details"],
-        color="Type",
-        color_discrete_map={"Exchange Floor": "#EF4444", "Corporate HQ": "#3B82F6"},
-        zoom=5,
-        height=550
-    )
-    
-    fig_map.update_layout(
-        mapbox_style="open-street-map",
-        margin={"r": 0, "t": 0, "l": 0, "b": 0},
-        paper_bgcolor="#0B0E14",
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(17,24,39,0.8)")
-    )
+    try:
+        if hasattr(px, "scatter_map"):
+            fig_map = px.scatter_map(
+                locations, lat="Lat", lon="Lon", hover_name="Name", hover_data=["Type", "Details"],
+                color="Type", color_discrete_map={"Exchange Floor": "#EF4444", "Corporate HQ": "#3B82F6"},
+                zoom=5, height=550
+            )
+            fig_map.update_layout(map_style="open-street-map", margin={"r": 0, "t": 0, "l": 0, "b": 0}, paper_bgcolor="#0B0E14")
+        elif hasattr(px, "scatter_mapbox"):
+            fig_map = px.scatter_mapbox(
+                locations, lat="Lat", lon="Lon", hover_name="Name", hover_data=["Type", "Details"],
+                color="Type", color_discrete_map={"Exchange Floor": "#EF4444", "Corporate HQ": "#3B82F6"},
+                zoom=5, height=550
+            )
+            fig_map.update_layout(mapbox_style="open-street-map", margin={"r": 0, "t": 0, "l": 0, "b": 0}, paper_bgcolor="#0B0E14")
+        else:
+            raise AttributeError("Map API missing")
+    except Exception:
+        fig_map = px.scatter_geo(
+            locations, lat="Lat", lon="Lon", hover_name="Name", hover_data=["Type", "Details"],
+            color="Type", color_discrete_map={"Exchange Floor": "#EF4444", "Corporate HQ": "#3B82F6"},
+            height=550
+        )
+        fig_map.update_geos(fitbounds="locations", visible=True)
+        fig_map.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, paper_bgcolor="#0B0E14")
     
     st.plotly_chart(fig_map, use_container_width=True)
 

@@ -7,11 +7,9 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import requests
 from bs4 import BeautifulSoup
-from sklearn.ensemble import RandomForestClassifier
 from transformers import pipeline
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 import datetime
 import warnings
@@ -22,20 +20,23 @@ warnings.filterwarnings('ignore')
 # 1. PAGE CONFIG, SEO & DARK UI STYLING
 # ==========================================
 st.set_page_config(
-    page_title="PSX Quant Terminal Pro | AI Trading & Calculators", 
+    page_title="PSX Quant Terminal | Institutional AI Trading & Calculators", 
     layout="wide", 
     page_icon="🏛️",
     initial_sidebar_state="expanded"
 )
 
-# SEO HTML Injection for Google Web Crawlers & Search Engines
+# Professional SEO Meta Tags Injection for Google & Search Engines
 st.markdown("""
     <head>
-        <title>PSX Quant Terminal Pro | Pakistan Stock Exchange AI Trading & Calculators</title>
-        <meta name="description" content="Professional quantitative trading terminal for the Pakistan Stock Exchange (PSX). Features live AI signals, FinBERT sentiment, 50 SMA charts, and 8 institutional calculators.">
-        <meta name="keywords" content="PSX trading app, Pakistan Stock Exchange AI, KSE-100 analysis, stock calculators Pakistan, FinBERT PSX, quantitative trading software Lahore">
+        <title>PSX Quant Terminal | Official Pakistan Stock Exchange AI Trading Suite</title>
+        <meta name="description" content="PSX Quant Terminal is Pakistan's premier quantitative trading web app featuring live AI signals, FinBERT sentiment analysis, 50 SMA charts, and 8 institutional financial calculators.">
+        <meta name="keywords" content="PSX Quant Terminal, Pakistan Stock Exchange AI, KSE-100 stock predictor, PSX trading software, FinBERT Pakistan, stock calculators Lahore">
         <meta name="author" content="Muhammad Moeez Amir">
         <meta name="robots" content="index, follow">
+        <meta property="og:title" content="PSX Quant Terminal">
+        <meta property="og:description" content="Institutional-grade quantitative analysis and risk management suite for PSX investors.">
+        <meta property="og:type" content="website">
     </head>
     <style>
     .stApp { background-color: #080A0F; color: #E2E8F0; font-family: 'Inter', -apple-system, sans-serif; }
@@ -117,7 +118,7 @@ if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
 # ==========================================
-# 3. AUTHENTICATION & PRICING GATEWAY
+# 3. SECURE LOGIN & SUBSCRIPTION GATEWAY
 # ==========================================
 def check_user_subscription(email):
     try:
@@ -129,29 +130,29 @@ def check_user_subscription(email):
             expiry = pd.to_datetime(df.iloc[0]['expiry_date'])
             if status == "Active" and expiry > pd.Timestamp.now():
                 days_left = (expiry - pd.Timestamp.now()).days
-                return True, days_left
+                return "Active", days_left
             elif status == "Pending":
                 return "Pending", 0
     except Exception:
         pass
-    return False, 0
+    return "Inactive", 0
 
 if not st.session_state.logged_in:
     st.markdown("""
         <div class="auth-card">
-            <h2 style="color: #38BDF8; margin-top: 0;">🏛️ PSX Quant Terminal Pro</h2>
-            <p style="color: #94A3B8; font-size: 14px;">Institutional Quantitative Suite & Educational Portal. Please log in or subscribe to access live AI execution matrices.</p>
+            <h2 style="color: #38BDF8; margin-top: 0;">🏛️ PSX Quant Terminal</h2>
+            <p style="color: #94A3B8; font-size: 14px;">Pakistan's Premier Institutional Quantitative Suite. Please log in or submit your subscription payment to unlock live trading terminals.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    auth_tab1, auth_tab2, auth_tab3 = st.tabs(["🔑 Login", "📝 Buy Subscription (Rs. 200 / 2,050)", "⚖️ Legal & Risk Notice"])
+    auth_tab1, auth_tab2, auth_tab3 = st.tabs(["🔑 User Login", "💳 Buy Subscription & Accounts", "⚖️ Legal Disclaimer"])
     
     with auth_tab1:
-        st.subheader("Existing User Login")
+        st.subheader("Terminal Login")
         login_email = st.text_input("Registered Email", key="l_email")
         login_pass = st.text_input("Password", type="password", key="l_pass")
         
-        if st.button("Access Terminal", type="primary", use_container_width=True):
+        if st.button("Launch My Terminal", type="primary", use_container_width=True):
             try:
                 conn = sqlite3.connect("trades.db")
                 cursor = conn.cursor()
@@ -160,35 +161,40 @@ if not st.session_state.logged_in:
                 conn.close()
                 
                 if row and row[0] == login_pass:
-                    if row[1] == "Active" and pd.to_datetime(row[2]) > pd.Timestamp.now():
+                    status, expiry_dt = row[1], row[2]
+                    if status == "Active" and pd.to_datetime(expiry_dt) > pd.Timestamp.now():
                         st.session_state.logged_in = True
                         st.session_state.user_email = login_email
                         st.rerun()
-                    elif row[1] == "Pending":
-                        st.warning("⏳ Your payment is pending admin approval. Access will be unlocked shortly.")
+                    elif status == "Pending":
+                        st.warning("⏳ **Payment Pending Verification:** Your transaction ID has been logged, but admin approval is required before terminal access is granted.")
                     else:
-                        st.error("❌ Your subscription has expired. Please renew via the Subscription tab.")
+                        st.error("❌ Your subscription has expired. Please renew via the subscription tab.")
                 else:
                     st.error("❌ Invalid email or password.")
             except Exception as e:
                 st.error(f"Login error: {e}")
 
     with auth_tab2:
-        st.subheader("Commercial Subscription Plans")
+        st.subheader("Official Subscription Portal")
         st.markdown("""
+        Choose your subscription package and transfer the payment to our official mobile wallet accounts:
         * 🟢 **Monthly Access:** `Rs. 200 / month`
-        * 🔵 **Annual Access (Best Value):** `Rs. 2,050 / year`
+        * 🔵 **Annual Access:** `Rs. 2,050 / year`
         
-        **Payment Instructions:**
-        Transfer the fee via **Raast / JazzCash** to official mobile account: `0300-1234567 (Moeez Amir)` and submit your Transaction ID (TRX ID) below.
+        **Official Transfer Numbers:**
+        * **JazzCash:** `03484178009` *(Muhammad Moeez Amir)*
+        * **EasyPaisa:** `03238891828` *(Muhammad Moeez Amir)*
+        
+        *After transferring funds from your mobile app, paste your 12-digit SMS Transaction ID (TRX ID) below.*
         """)
         
         reg_email = st.text_input("Your Email Address", key="r_email")
         reg_pass = st.text_input("Create Password", type="password", key="r_pass")
-        reg_plan = st.selectbox("Select Plan", ["Monthly (Rs. 200)", "Annual (Rs. 2,050)"])
-        reg_trx = st.text_input("Mobile Wallet Transaction ID (TRX ID)")
+        reg_plan = st.selectbox("Select Subscription Tier", ["Monthly (Rs. 200)", "Annual (Rs. 2,050)"])
+        reg_trx = st.text_input("Enter Mobile Wallet Transaction ID (e.g. 12-digit TRX from SMS)")
         
-        if st.button("Submit Subscription Request", type="primary", use_container_width=True):
+        if st.button("Submit Payment & Request Access", type="primary", use_container_width=True):
             if reg_email and reg_pass and reg_trx:
                 days = 30 if "Monthly" in reg_plan else 365
                 expiry_dt = (datetime.datetime.now() + datetime.timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
@@ -196,15 +202,16 @@ if not st.session_state.logged_in:
                 try:
                     conn = sqlite3.connect("trades.db")
                     cursor = conn.cursor()
+                    # Set status to 'Pending' so users cannot bypass payment without valid admin verification
                     cursor.execute("INSERT OR REPLACE INTO users (email, password, plan, trx_id, expiry_date, status) VALUES (?, ?, ?, ?, ?, ?)", 
-                                   (reg_email, reg_pass, plan_name, reg_trx, expiry_dt, "Active"))
+                                   (reg_email, reg_pass, plan_name, reg_trx, expiry_dt, "Pending"))
                     conn.commit()
                     conn.close()
-                    st.success("✅ Subscription submitted and activated! You can now log in.")
+                    st.success("✅ Transaction ID successfully submitted! Your account is now in 'Pending Verification' mode. Once admin verifies payment, you can log in.")
                 except Exception as e:
                     st.error(f"Database error: {e}")
             else:
-                st.warning("Please fill in all fields including your Transaction ID.")
+                st.warning("Please fill out all fields including your Transaction ID.")
 
     with auth_tab3:
         st.markdown("""
@@ -216,17 +223,16 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==========================================
-# 4. SUBSCRIPTION EXPIRY & WARNING BANNER
+# 4. SUBSCRIPTION VERIFICATION & WARNINGS
 # ==========================================
-is_valid, days_remaining = check_user_subscription(st.session_state.user_email)
-if not is_valid:
-    st.error("❌ Your subscription has expired or is inactive. Please log out and renew your subscription.")
+status_check, days_remaining = check_user_subscription(st.session_state.user_email)
+if status_check != "Active":
+    st.error("❌ Your account is either pending verification or your subscription has expired. Please log out.")
     if st.button("Log Out"):
         st.session_state.logged_in = False
         st.rerun()
     st.stop()
 
-# Automated Daily Countdown Expiry Alert (Triggers if <= 7 days left)
 if days_remaining <= 7:
     st.warning(f"⚠️ **Subscription Renewal Notice:** Only **{days_remaining} day(s) remaining** on your subscription plan! Renew before expiration to prevent service interruption.")
 
@@ -388,7 +394,7 @@ def calculate_dynamic_ai_confidence(close_s, ma50, current_rsi, sent_score):
 # 8. SIDEBAR CONTROL PANEL
 # ==========================================
 with st.sidebar:
-    st.title("🏛️ PSX Terminal Pro")
+    st.title("🏛️ PSX Quant Terminal")
     st.caption(f"User: {st.session_state.user_email}")
     if st.button("🚪 Log Out", use_container_width=True):
         st.session_state.logged_in = False

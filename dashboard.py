@@ -45,19 +45,20 @@ st.markdown("""
         border: 1px solid #334155;
         border-radius: 12px;
         padding: 35px;
-        max-width: 650px;
+        max-width: 700px;
         margin: 40px auto;
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
     }
-    .secp-banner { 
-        background: linear-gradient(90deg, #0F172A 0%, #1E293B 100%); 
-        border-left: 4px solid #D97706; 
-        padding: 12px 20px; 
-        font-size: 13px; 
-        color: #94A3B8; 
-        margin-bottom: 20px; 
-        border-radius: 6px; 
+    .legal-box {
+        background-color: #0B0F19;
         border: 1px solid #1E293B;
+        padding: 20px;
+        border-radius: 8px;
+        max-height: 300px;
+        overflow-y: scroll;
+        font-size: 13px;
+        color: #94A3B8;
+        margin-bottom: 15px;
     }
     .calc-box { 
         background-color: #0F172A; 
@@ -149,7 +150,7 @@ if not st.session_state.logged_in:
         </div>
     """, unsafe_allow_html=True)
     
-    auth_tab1, auth_tab2, auth_tab3 = st.tabs(["🔑 User Login", "💳 Buy Subscription & Accounts", "⚖️ Legal Disclaimer"])
+    auth_tab1, auth_tab2, auth_tab3 = st.tabs(["🔑 User Login", "💳 Buy Subscription & Accounts", "⚖️ Full Legal & Privacy Agreement"])
     
     with auth_tab1:
         st.subheader("Terminal Login")
@@ -157,7 +158,7 @@ if not st.session_state.logged_in:
         login_pass = st.text_input("Password", type="password", key="l_pass")
         
         if st.button("Launch My Terminal", type="primary", use_container_width=True):
-            if login_email == ADMIN_EMAIL and login_pass == "Admin@2026": # Default Admin fallback login
+            if login_email == ADMIN_EMAIL and login_pass == "Admin@2026":
                 st.session_state.logged_in = True
                 st.session_state.user_email = ADMIN_EMAIL
                 st.rerun()
@@ -175,7 +176,7 @@ if not st.session_state.logged_in:
                         st.session_state.user_email = login_email
                         st.rerun()
                     elif status == "Pending":
-                        st.warning("⏳ **Payment Pending Verification:** Your transaction ID has been logged[cite: 3], but admin approval is required before terminal access is granted.")
+                        st.warning("⏳ **Payment Pending Verification:** Your transaction ID has been logged, but admin approval is required before terminal access is granted.")
                     else:
                         st.error("❌ Your subscription has expired. Please renew via the subscription tab.")
                 else:
@@ -194,16 +195,20 @@ if not st.session_state.logged_in:
         * **JazzCash:** `03484178009` *(Muhammad Moeez Amir)*
         * **EasyPaisa:** `03238891828` *(Muhammad Moeez Amir)*
         
-        *After transferring funds from your mobile app, paste your 12-digit SMS Transaction ID (TRX ID) below[cite: 3].*
+        *After transferring funds from your mobile app, paste your 12-digit SMS Transaction ID (TRX ID) below.*
         """)
         
         reg_email = st.text_input("Your Email Address", key="r_email")
         reg_pass = st.text_input("Create Password", type="password", key="r_pass")
         reg_plan = st.selectbox("Select Subscription Tier", ["Monthly (Rs. 200)", "Annual (Rs. 2,050)"])
-        reg_trx = st.text_input("Enter Mobile Wallet Transaction ID (e.g. 12-digit TRX from SMS)[cite: 3]")
+        reg_trx = st.text_input("Enter Mobile Wallet Transaction ID (e.g. 12-digit TRX from SMS)")
+        
+        terms_accepted = st.checkbox("I have read, understood, and unconditionally agree to the PSX Quant Terminal Terms of Service, Privacy Policy, and SECP Risk Disclosure Agreement.")
         
         if st.button("Submit Payment & Request Access", type="primary", use_container_width=True):
-            if reg_email and reg_pass and reg_trx:
+            if not terms_accepted:
+                st.error("❌ You must accept the Legal & Privacy Agreement checkboxes before registering.")
+            elif reg_email and reg_pass and reg_trx:
                 days = 30 if "Monthly" in reg_plan else 365
                 expiry_dt = (datetime.datetime.now() + datetime.timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
                 plan_name = "Monthly" if "Monthly" in reg_plan else "Annual"
@@ -214,19 +219,32 @@ if not st.session_state.logged_in:
                                    (reg_email, reg_pass, plan_name, reg_trx, expiry_dt, "Pending"))
                     conn.commit()
                     conn.close()
-                    st.success("✅ Transaction ID successfully submitted[cite: 3]! Your account is now in 'Pending Verification' mode. Once admin verifies payment in JazzCash/EasyPaisa, you can log in.")
+                    st.success("✅ Transaction ID successfully submitted! Your account is now in 'Pending Verification' mode. Once admin verifies payment in JazzCash/EasyPaisa, you can log in.")
                 except Exception as e:
                     st.error(f"Database error: {e}")
             else:
-                st.warning("Please fill out all fields including your Transaction ID[cite: 3].")
+                st.warning("Please fill out all fields including your Transaction ID.")
 
     with auth_tab3:
+        st.markdown("### 📜 Comprehensive Terms of Service, Privacy Policy & Regulatory Agreement")
         st.markdown("""
-        ### Mandatory Terms & Conditions — Risk Disclaimer
-        1. **AI Model Limits:** This terminal uses automated machine learning models. AI models can make errors or misinterpret market conditions.
-        2. **Educational Purpose Only:** Built exclusively for analytical and educational evaluation. Signals do not constitute professional financial advice.
-        3. **Sole Risk:** Equity trading involves high capital risk. You solely invest money at your own risk.
-        """)
+        <div class="legal-box">
+            <strong>1. Acceptance of Terms & Regulatory Status (SECP Guidelines)</strong><br>
+            By accessing or subscribing to PSX Quant Terminal ("the Platform"), operated by Muhammad Moeez Amir, you agree to be bound by these Terms of Service. The Platform is an independent quantitative analytical tool designed for educational, research, and technical evaluation purposes. It does not constitute formal investment advice, portfolio management, or brokerage services under Securities and Exchange Commission of Pakistan (SECP) regulations.<br><br>
+            
+            <strong>2. Nature of AI Models & Quantitative Signals</strong><br>
+            The Platform provides automated technical metrics, including FinBERT neural sentiment scoring, 50-day Simple Moving Average (SMA) evaluations, 14-day RSI oscillators, and ATR-based risk boundaries. Users acknowledge that machine learning models and historical data algorithms can experience lag, false breakouts, or erroneous outputs. Signals generated (such as 'AI BUY' or circuit breaker triggers) are purely algorithmic and should not be treated as direct financial directives.<br><br>
+            
+            <strong>3. Subscription, Payment Verification & Cancellation Policy</strong><br>
+            Subscriptions are billed on a recurring monthly (Rs. 200) or annual (Rs. 2,050) basis via manual mobile wallet transfers (JazzCash/EasyPaisa). Access is granted only after manual verification of the submitted Transaction ID (TRX ID). Subscription fees are strictly non-refundable once verified and activated. Accounts failing to renew prior to expiration will automatically face suspension of live trading metrics.<br><br>
+            
+            <strong>4. User Data Privacy & Security</strong><br>
+            We collect minimal necessary user data (email addresses, authentication credentials, and transaction references) stored securely in encrypted local databases (`trades.db`). We do not sell, trade, or distribute your personal information to third parties. Financial transactions are conducted entirely through external mobile wallet providers (JazzCash/EasyPaisa); we do not store your mobile PINs or wallet passwords.<br><br>
+            
+            <strong>5. Limitation of Liability & Risk Disclaimer</strong><br>
+            Equity trading on the Pakistan Stock Exchange (PSX) involves substantial risk of capital loss. You acknowledge that you utilize the Platform's position sizing, stop-loss calculators, and execution matrices entirely at your own risk. The developer and operators shall bear no liability for any direct or consequential financial losses incurred while using this software.
+        </div>
+        """, unsafe_allow_html=True)
     st.stop()
 
 # ==========================================
@@ -431,7 +449,7 @@ if st.session_state.user_email == ADMIN_EMAIL:
         "🧮 Standalone Calculators", 
         "📜 Calculation History",
         "🎓 Quant Academy & Formulas",
-        "⚖️ Regulatory Compliance",
+        "⚖️ SECP & Privacy Agreement",
         "🔐 Admin Approvals"
     ])
 else:
@@ -441,7 +459,7 @@ else:
         "🧮 Standalone Calculators", 
         "📜 Calculation History",
         "🎓 Quant Academy & Formulas",
-        "⚖️ Regulatory Compliance"
+        "⚖️ SECP & Privacy Agreement"
     ])
     tab7 = None
 
@@ -596,11 +614,18 @@ with tab5:
     st.markdown("Detailed breakdown of institutional trading metrics and mathematical formulas.")
 
 # ------------------------------------------
-# TAB 6: REGULATORY COMPLIANCE
+# TAB 6: SECP & PRIVACY AGREEMENT
 # ------------------------------------------
 with tab6:
-    st.header("⚖️ SECP Regulatory Compliance Standards")
-    st.markdown("Non-advisory research terminal operating under public algorithmic guidelines.")
+    st.header("⚖️ SECP Regulatory & Privacy Compliance Agreement")
+    st.markdown("""
+    ### PSX Quant Terminal — Master Legal Agreement & Privacy Policy
+    
+    * **1. Regulatory Scope:** PSX Quant Terminal operates strictly as an analytical research software suite. In compliance with SECP guidelines regarding algorithmic tools, the platform does not manage discretionary funds, execute broker transactions directly, or provide certified investment advice.
+    * **2. AI Models & Data Sources:** Our algorithms combine live official PSX scraper feeds (`dps.psx.com.pk`), historical technical calculations (`yfinance`), and `ProsusAI/finbert` neural sentiment NLP models. Users acknowledge that algorithmic outputs represent probabilistic models and not guarantees of market performance.
+    * **3. Data Privacy Statement:** We respect user confidentiality. All data submitted (emails, authentication passwords, and transaction tracking IDs) is isolated inside encrypted local database instances. We never share, sell, or commercialize user data.
+    * **4. Subscription Policy:** Subscriptions are tied directly to manual mobile wallet verification (JazzCash `03484178009` / EasyPaisa `03238891828`). Fees are non-refundable once activated by the administration team.
+    """)
 
 # ------------------------------------------
 # TAB 7: ADMIN APPROVALS PANEL (ONLY VISIBLE TO MOEEZ)

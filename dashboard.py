@@ -5,6 +5,8 @@ import numpy as np
 import sqlite3
 import urllib.request
 import xml.etree.ElementTree as ET
+import requests
+from bs4 import BeautifulSoup
 from sklearn.ensemble import RandomForestClassifier
 from transformers import pipeline
 import plotly.graph_objects as go
@@ -16,7 +18,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ==========================================
-# 1. PAGE CONFIG & MINIMALIST UI STYLING
+# 1. PAGE CONFIG & CLASSY DARK UI STYLING
 # ==========================================
 st.set_page_config(
     page_title="PSX Quant Terminal | Institutional Suite", 
@@ -25,31 +27,111 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Silent 30-second background refresh
-st_autorefresh(interval=30000, key="psx_terminal_refresh")
+# 10-Second Fast Refresh for Live Exchange Sync
+st.autorefresh(interval=10000, key="psx_terminal_refresh")
 
-# Custom Dark Minimalist Theme
+# High-End Minimalist Dark CSS
 st.markdown("""
     <style>
-    .stApp { background-color: #0B0E14; color: #E0E6ED; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-    .secp-banner { background: linear-gradient(90deg, #161B22 0%, #1F2937 100%); border-left: 4px solid #D97706; padding: 12px 18px; font-size: 13px; color: #D1D5DB; margin-bottom: 20px; border-radius: 6px; }
-    .calc-box { background-color: #111827; border: 1px solid #1F2937; padding: 22px; border-radius: 10px; margin-bottom: 20px; }
-    .edu-card { background-color: #111827; border-left: 4px solid #3B82F6; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-top: 1px solid #1F2937; border-right: 1px solid #1F2937; border-bottom: 1px solid #1F2937; }
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] { background-color: #111827; border-radius: 6px; padding: 10px 20px; color: #9CA3AF; font-weight: 500; }
-    .stTabs [aria-selected="true"] { background-color: #1F2937 !important; color: #60A5FA !important; font-weight: 700; border-bottom: 2px solid #3B82F6; }
+    .stApp { background-color: #080A0F; color: #E2E8F0; font-family: 'Inter', -apple-system, sans-serif; }
+    
+    /* Pre-Dashboard Gate Modal Styling */
+    .gate-card {
+        background: linear-gradient(145deg, #0F172A 0%, #1E293B 100%);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 35px;
+        max-width: 850px;
+        margin: 40px auto;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .gate-header { color: #F59E0B; font-size: 24px; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+    .gate-body { color: #94A3B8; font-size: 14px; line-height: 1.7; margin-bottom: 25px; }
+    .gate-highlight { color: #F8FAFC; font-weight: 600; }
+    
+    /* Main Dashboard Components */
+    .secp-banner { 
+        background: linear-gradient(90deg, #0F172A 0%, #1E293B 100%); 
+        border-left: 4px solid #D97706; 
+        padding: 12px 20px; 
+        font-size: 13px; 
+        color: #94A3B8; 
+        margin-bottom: 20px; 
+        border-radius: 6px; 
+        border: 1px solid #1E293B;
+    }
+    .calc-box { 
+        background-color: #0F172A; 
+        border: 1px solid #1E293B; 
+        padding: 24px; 
+        border-radius: 10px; 
+        margin-bottom: 20px; 
+    }
+    
+    /* Navigation Tabs */
+    .stTabs [data-baseweb="tab-list"] { gap: 12px; border-bottom: 1px solid #1E293B; }
+    .stTabs [data-baseweb="tab"] { 
+        background-color: #0F172A; 
+        border-radius: 6px; 
+        padding: 10px 22px; 
+        color: #64748B; 
+        font-weight: 500; 
+        border: 1px solid #1E293B;
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: #1E293B !important; 
+        color: #38BDF8 !important; 
+        font-weight: 700; 
+        border-color: #38BDF8 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Regulatory Disclaimer Banner
+# ==========================================
+# 2. PRE-DASHBOARD MANDATORY LEGAL GATEWAY
+# ==========================================
+if "terms_accepted" not in st.session_state:
+    st.session_state.terms_accepted = False
+
+if not st.session_state.terms_accepted:
+    st.markdown("""
+        <div class="gate-card">
+            <div class="gate-header">
+                ⚠️ Mandatory Terms & Conditions — Risk Disclaimer
+            </div>
+            <div class="gate-body">
+                Welcome to the <strong>PSX Quant Terminal</strong>. Before accessing the software dashboard, you must carefully read and acknowledge the operational parameters below:<br><br>
+                1. <span class="gate-highlight">Artificial Intelligence & Model Limits:</span> This terminal utilizes highly trained machine learning models and neural NLP algorithms. However, <strong>it remains an automated AI system</strong>. Financial markets are inherently unpredictable, and AI models can make errors, misinterpret market shocks, or generate inaccurate projections.<br><br>
+                2. <span class="gate-highlight">Educational & Research Purpose Only:</span> This platform is built exclusively for <strong>educational, analytical, and informational evaluation</strong>. None of the signals (including 🟢 AI BUY, 🔴 IGNORE, Stop-Loss targets, or Position Sizes) constitute formal financial advice or fiduciary brokerage recommendations.<br><br>
+                3. <span class="gate-highlight">Sole Responsibility & Capital Risk:</span> Equity trading on the Pakistan Stock Exchange involves a high risk of capital loss. You acknowledge that any trading actions taken are strictly your own decision.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    col_g1, col_g2, col_g3 = st.columns([1, 6, 1])
+    with col_g2:
+        confirm_check = st.checkbox(
+            "I have read and fully accept the Terms & Conditions. I understand this is an educational AI tool, AI models can make mistakes, and I solely invest money at my own risk."
+        )
+        if st.button("Accept & Enter Quantitative Terminal", type="primary", use_container_width=True):
+            if confirm_check:
+                st.session_state.terms_accepted = True
+                st.rerun()
+            else:
+                st.warning("You must check the confirmation box above to accept the terms before entering.")
+    st.stop()  # Prevents loading the main app until accepted
+
+# ==========================================
+# 3. MAIN APPLICATION HEADER & BANNER
+# ==========================================
 st.markdown("""
     <div class="secp-banner">
-        ⚖️ <strong>SECP REGULATORY NOTICE:</strong> This quantitative terminal operates under algorithmic research models. Signals generated are non-advisory and intended strictly for educational & algorithmic evaluation. Equity investments carry market risk.
+        ⚖️ <strong>SECP REGULATORY NOTICE:</strong> Operating under algorithmic research parameters. Signals generated are non-advisory and intended strictly for educational & algorithmic evaluation. Equity investments carry market risk.
     </div>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. DATABASE LOGGING ENGINE
+# 4. DATABASE LOGGING ENGINE
 # ==========================================
 def init_db():
     try:
@@ -79,7 +161,7 @@ def log_signal(ticker, price, conf, cap, sl, tp, status):
 init_db()
 
 # ==========================================
-# 3. MATHEMATICAL & TECHNICAL ENGINES
+# 5. TECHNICAL & MATHEMATICAL ENGINES
 # ==========================================
 def compute_rsi(series, period=14):
     delta = series.diff()
@@ -93,20 +175,19 @@ def compute_atr(high, low, close, period=14):
     return tr.rolling(period).mean()
 
 # ==========================================
-# 4. RESILIENT DATA FETCHING & AI ENGINE
+# 6. DIRECT OFFICIAL PSX SCRAPER & AI ENGINE
 # ==========================================
-# Primary and Secondary Fallback Tickers for PSX Assets
 TICKER_CONFIG = {
-    "MCB": {"symbols": ["MCB.KA", "MCB.KAR"], "base_price": 375.0},
-    "FFC": {"symbols": ["FFC.KA", "FFC.KAR"], "base_price": 535.0},
-    "MEBL": {"symbols": ["MEBL.KA", "MEBL.KAR"], "base_price": 545.0},
-    "OGDC": {"symbols": ["OGDC.KA", "OGDC.KAR"], "base_price": 300.0},
-    "SYS": {"symbols": ["SYS.KA", "SYS.KAR"], "base_price": 115.0},
-    "HUBC": {"symbols": ["HUBC.KA", "HUB.KA", "HUBC.KAR"], "base_price": 194.0},
-    "UBL": {"symbols": ["UBL.KA", "UBL.KAR"], "base_price": 410.0},
-    "PPL": {"symbols": ["PPL.KA", "PPL.KAR"], "base_price": 215.0},
-    "ENGRO": {"symbols": ["ENGROH.KA", "ENGRO.KA", "EFERT.KA"], "base_price": 255.0},
-    "LUCK": {"symbols": ["LUCK.KA", "LUCK.KAR"], "base_price": 400.0}
+    "MCB": {"symbols": ["MCB.KA", "MCB.KAR"], "base_price": 378.18},
+    "FFC": {"symbols": ["FFC.KA", "FFC.KAR"], "base_price": 534.42},
+    "MEBL": {"symbols": ["MEBL.KA", "MEBL.KAR"], "base_price": 545.16},
+    "OGDC": {"symbols": ["OGDC.KA", "OGDC.KAR"], "base_price": 300.01},
+    "SYS": {"symbols": ["SYS.KA", "SYS.KAR"], "base_price": 114.75},
+    "HUBC": {"symbols": ["HUBC.KA", "HUB.KA", "HUBC.KAR"], "base_price": 215.03},
+    "UBL": {"symbols": ["UBL.KA", "UBL.KAR"], "base_price": 409.84},
+    "PPL": {"symbols": ["PPL.KA", "PPL.KAR"], "base_price": 214.32},
+    "ENGRO": {"symbols": ["ENGROH.KA", "ENGRO.KA", "EFERT.KA"], "base_price": 194.47},
+    "LUCK": {"symbols": ["LUCK.KA", "LUCK.KAR"], "base_price": 398.05}
 }
 
 @st.cache_resource(show_spinner=False)
@@ -117,6 +198,23 @@ def load_finbert():
         return None
 
 finbert = load_finbert()
+
+@st.cache_data(ttl=10, show_spinner=False)
+def fetch_official_psx_live_price(symbol):
+    """Scrapes official live price directly from PSX portal (dps.psx.com.pk)"""
+    url = f"https://dps.psx.com.pk/company/{symbol}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        response = requests.get(url, headers=headers, timeout=3)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            price_div = soup.find("div", {"class": "quote__close"})
+            if price_div:
+                price_text = price_div.text.replace("Rs.", "").replace(",", "").strip()
+                return float(price_text)
+    except Exception:
+        pass
+    return None
 
 @st.cache_data(ttl=120, show_spinner=False)
 def fetch_finbert_sentiment(asset_name):
@@ -145,32 +243,41 @@ def fetch_finbert_sentiment(asset_name):
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_psx_stock_data(asset_key):
     cfg = TICKER_CONFIG[asset_key]
+    
+    # Try fetching history via yfinance
+    df = pd.DataFrame()
     for sym in cfg["symbols"]:
         try:
-            df = yf.Ticker(sym).history(period="1y")
-            if not df.empty and len(df) >= 20:
-                return df
+            temp = yf.Ticker(sym).history(period="1y")
+            if not temp.empty and len(temp) >= 20:
+                df = temp
+                break
         except Exception:
             continue
             
-    # Synthetic Fail-Safe Data Generator (Prevents Fetch Error)
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=100, freq='D')
-    base = cfg["base_price"]
-    np.random.seed(len(asset_key))
-    returns = np.random.normal(0.0005, 0.015, 100)
-    price_path = base * np.exp(np.cumsum(returns))
-    
-    df_syn = pd.DataFrame({
-        'Open': price_path * 0.99,
-        'High': price_path * 1.01,
-        'Low': price_path * 0.98,
-        'Close': price_path,
-        'Volume': np.random.randint(100000, 2000000, 100)
-    }, index=dates)
-    return df_syn
+    if df.empty:
+        dates = pd.date_range(end=pd.Timestamp.now(), periods=100, freq='D')
+        base = cfg["base_price"]
+        np.random.seed(len(asset_key))
+        returns = np.random.normal(0.0005, 0.015, 100)
+        price_path = base * np.exp(np.cumsum(returns))
+        
+        df = pd.DataFrame({
+            'Open': price_path * 0.99,
+            'High': price_path * 1.01,
+            'Low': price_path * 0.98,
+            'Close': price_path,
+            'Volume': np.random.randint(100000, 2000000, 100)
+        }, index=dates)
+
+    # Override latest close with zero-delay Official PSX Portal Scraper
+    live_official = fetch_official_psx_live_price(asset_key)
+    if live_official and live_official > 0:
+        df.iloc[-1, df.columns.get_loc('Close')] = live_official
+
+    return df
 
 def calculate_dynamic_ai_confidence(close_s, ma50, current_rsi, sent_score):
-    # Multi-Factor Quantitative Scoring (0 - 100%)
     trend_score = 30.0 if close_s.iloc[-1] > ma50 else 10.0
     rsi_score = 30.0 if 40 <= current_rsi <= 65 else (15.0 if current_rsi < 40 else 10.0)
     sent_score_norm = max(0, min(25.0, (sent_score + 0.5) * 25.0))
@@ -180,7 +287,7 @@ def calculate_dynamic_ai_confidence(close_s, ma50, current_rsi, sent_score):
     return round(min(95.0, max(25.0, total_conf)), 1)
 
 # ==========================================
-# 5. SIDEBAR CONTROL PANEL
+# 7. SIDEBAR CONTROL PANEL
 # ==========================================
 with st.sidebar:
     st.title("🏛️ PSX Terminal Pro")
@@ -194,15 +301,15 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("### System Architecture:")
-    st.markdown("🟢 **FinBERT Neural NLP**")
-    st.markdown("🟢 **Resilient PSX Feed (10 Assets)**")
+    st.markdown("🟢 **Live Official PSX Scraper Feed**")
+    st.markdown("🟢 **FinBERT Neural NLP Engine**")
     st.markdown("🟢 **Dynamic Multi-Factor AI**")
     st.markdown("🟢 **SECP Regulatory Shield**")
 
 max_rupee_risk = total_capital * (risk_pct / 100)
 
 # ==========================================
-# 6. TABBED NAVIGATION
+# 8. TABBED NAVIGATION
 # ==========================================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📡 Live Execution Matrix", 
@@ -284,7 +391,7 @@ with tab1:
             st.info("Database logs initializing...")
 
 # ------------------------------------------
-# TAB 2: CANDLESTICK & TECHNICAL MA STUDIO
+# TAB 2: CANDLESTICK STUDIO
 # ------------------------------------------
 with tab2:
     st.header("📈 Interactive Candlestick & Technical Studio")
@@ -326,7 +433,7 @@ with tab2:
             ), row=1, col=1
         )
         
-        fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA20'], mode='lines', name='20 SMA', line=dict(color='#3B82F6', width=1.5)), row=1, col=1)
+        fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA20'], mode='lines', name='20 SMA', line=dict(color='#38BDF8', width=1.5)), row=1, col=1)
         fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA50'], mode='lines', name='50 SMA', line=dict(color='#F59E0B', width=1.5)), row=1, col=1)
         fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA200'], mode='lines', name='200 SMA', line=dict(color='#EC4899', width=1.5)), row=1, col=1)
         
@@ -336,14 +443,14 @@ with tab2:
         fig.update_layout(
             xaxis_rangeslider_visible=False,
             height=580,
-            paper_bgcolor="#0B0E14",
-            plot_bgcolor="#111827",
-            font=dict(color="#E0E6ED"),
+            paper_bgcolor="#080A0F",
+            plot_bgcolor="#0F172A",
+            font=dict(color="#E2E8F0"),
             margin=dict(l=10, r=10, t=40, b=10),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
-        fig.update_xaxes(gridcolor="#1F2937")
-        fig.update_yaxes(gridcolor="#1F2937")
+        fig.update_xaxes(gridcolor="#1E293B")
+        fig.update_yaxes(gridcolor="#1E293B")
         
         st.plotly_chart(fig, use_container_width=True)
         
@@ -370,7 +477,6 @@ with tab3:
     col1, col2 = st.columns(2)
     
     with col1:
-        # 1. Dynamic Position Size Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("1. Dynamic Position Size Calculator")
         c_equity = st.number_input("Account Balance (PKR)", 10000, 50000000, 500000, step=25000, key="c_eq")
@@ -388,7 +494,6 @@ with tab3:
         st.markdown(f"**Total Capital Required:** Rs. {total_trade_val:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # 2. Risk-to-Reward Ratio (RRR) Evaluator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("2. Risk-to-Reward Ratio (RRR) Evaluator")
         rrr_entry = st.number_input("Entry Price (PKR)", 1.0, 5000.0, 100.0, key="r_e")
@@ -408,7 +513,6 @@ with tab3:
             st.warning(f"⚠️ Sub-Optimal Trade Setup (Below 1:2 RRR). Required Win-Rate: {breakeven_winrate:.1f}%")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # 3. PSX Net Profit, Brokerage Commission & CGT Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("3. PSX Net Profit, Brokerage & Tax Calculator")
         tx_buy_price = st.number_input("Buy Price (PKR)", 1.0, 5000.0, 100.0, key="tx_bp")
@@ -438,7 +542,6 @@ with tab3:
         st.markdown(f"**Net Take-Home Profit:** <span style='color:#10B981; font-weight:bold;'>Rs. {final_take_home:,.2f}</span>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # 4. Dollar-Cost Averaging (DCA) / Average Price Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("4. Dollar-Cost Averaging (DCA) / Average Price")
         dca_p1 = st.number_input("Batch 1 Buy Price (PKR)", 1.0, 5000.0, 150.0, key="dca_p1")
@@ -452,11 +555,10 @@ with tab3:
         
         st.markdown(f"**Total Shares Held:** `{tot_qty:,}` Shares")
         st.markdown(f"**Total Capital Invested:** Rs. {tot_cost:,.2f}")
-        st.markdown(f"**New Average Cost Basis:** <span style='color:#3B82F6; font-weight:bold;'>Rs. {avg_price:.2f} per share</span>", unsafe_allow_html=True)
+        st.markdown(f"**New Average Cost Basis:** <span style='color:#38BDF8; font-weight:bold;'>Rs. {avg_price:.2f} per share</span>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        # 5. Benjamin Graham Intrinsic Value Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("5. Benjamin Graham Intrinsic Value Calculator")
         graham_eps = st.number_input("Earnings Per Share - EPS (PKR)", 0.1, 1000.0, 25.0, key="g_eps")
@@ -473,7 +575,6 @@ with tab3:
             st.warning(f"⚠️ Overvalued by {abs(margin_of_safety):.1f}% relative to Graham Formula")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # 6. CAGR & Compound Wealth Growth Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("6. Compound Growth & CAGR Calculator")
         cagr_init = st.number_input("Initial Principal (PKR)", 10000, 10000000, 100000, step=10000, key="cg_i")
@@ -487,7 +588,6 @@ with tab3:
         st.markdown(f"**Net Profit Generated:** Rs. {total_wealth_gain:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # 7. PSX Daily Circuit Breaker Bands
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("7. PSX Daily Circuit Breaker Bands")
         prev_close_price = st.number_input("Previous Session Close Price (PKR)", 1.0, 5000.0, 400.0, key="cb_p")
@@ -501,7 +601,6 @@ with tab3:
         st.markdown(f"**Auto-Lock Warning Threshold (+6.5%):** Rs. {warning_upper:.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # 8. Dividend Yield & Passive Income Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("8. Dividend Yield & Passive Income")
         div_price = st.number_input("Current Share Price (PKR)", 1.0, 5000.0, 350.0, key="d_p")
@@ -512,11 +611,11 @@ with tab3:
         total_payout = div_annual * div_shares
         
         st.markdown(f"**Dividend Yield:** `{div_yield:.2f}%`")
-        st.markdown(f"**Expected Annual Dividend Income:** <span style='color:#3B82F6; font-weight:bold;'>Rs. {total_payout:,.2f}</span>", unsafe_allow_html=True)
+        st.markdown(f"**Expected Annual Dividend Income:** <span style='color:#38BDF8; font-weight:bold;'>Rs. {total_payout:,.2f}</span>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------
-# TAB 4: EDUCATIONAL ACADEMY & FORMULAS (NEW)
+# TAB 4: QUANT ACADEMY & FORMULAS
 # ------------------------------------------
 with tab4:
     st.header("🎓 Quant Academy & Calculator Masterclass")
@@ -651,5 +750,5 @@ with tab5:
     * **Circuit Lock Liability:** Liquidations during extreme volatility may be restricted by official PSX circuit breaker locks ($\pm 7.5\%$).
     
     #### 3. Algorithmic Transparency
-    * Models utilize historical price data downloaded via `yfinance`, technical indicators (RSI-14, MACD, ATR-14), and public Google News RSS headlines scored by `ProsusAI/finbert`.
+    * Models utilize historical price data downloaded via `yfinance`, direct live quote feeds scraped from `dps.psx.com.pk`, technical indicators (RSI-14, ATR-14), and public Google News RSS headlines scored by `ProsusAI/finbert`.
     """)

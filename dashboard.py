@@ -28,7 +28,7 @@ st.set_page_config(
 )
 
 # 10-Second Fast Refresh for Live Exchange Sync
-st.autorefresh(interval=10000, key="psx_terminal_refresh")
+st_autorefresh(interval=10000, key="psx_terminal_refresh")
 
 # High-End Minimalist Dark CSS
 st.markdown("""
@@ -69,11 +69,11 @@ st.markdown("""
     }
     
     /* Navigation Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 12px; border-bottom: 1px solid #1E293B; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; border-bottom: 1px solid #1E293B; }
     .stTabs [data-baseweb="tab"] { 
         background-color: #0F172A; 
         border-radius: 6px; 
-        padding: 10px 22px; 
+        padding: 10px 18px; 
         color: #64748B; 
         font-weight: 500; 
         border: 1px solid #1E293B;
@@ -119,7 +119,7 @@ if not st.session_state.terms_accepted:
                 st.rerun()
             else:
                 st.warning("You must check the confirmation box above to accept the terms before entering.")
-    st.stop()  # Prevents loading the main app until accepted
+    st.stop()
 
 # ==========================================
 # 3. MAIN APPLICATION HEADER & BANNER
@@ -144,6 +144,12 @@ def init_db():
                 stop_loss REAL, take_profit REAL, status TEXT
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS calc_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                calc_name TEXT, inputs_text TEXT, result_text TEXT
+            )
+        """)
         conn.commit()
         conn.close()
     except Exception:
@@ -155,6 +161,26 @@ def log_signal(ticker, price, conf, cap, sl, tp, status):
         conn.cursor().execute("INSERT INTO signals (ticker, price, ai_confidence, capital_allocated, stop_loss, take_profit, status) VALUES (?, ?, ?, ?, ?, ?, ?)", (ticker, price, conf, cap, sl, tp, status))
         conn.commit()
         conn.close()
+    except Exception:
+        pass
+
+def log_calc(calc_name, inputs_text, result_text):
+    try:
+        conn = sqlite3.connect("trades.db")
+        conn.cursor().execute("INSERT INTO calc_history (calc_name, inputs_text, result_text) VALUES (?, ?, ?)", (calc_name, inputs_text, result_text))
+        conn.commit()
+        conn.close()
+        st.toast(f"✅ Calculation saved to history!", icon="💾")
+    except Exception:
+        pass
+
+def clear_calc_history():
+    try:
+        conn = sqlite3.connect("trades.db")
+        conn.cursor().execute("DELETE FROM calc_history")
+        conn.commit()
+        conn.close()
+        st.toast("🗑️ Calculation history cleared!", icon="🧹")
     except Exception:
         pass
 
@@ -244,7 +270,6 @@ def fetch_finbert_sentiment(asset_name):
 def fetch_psx_stock_data(asset_key):
     cfg = TICKER_CONFIG[asset_key]
     
-    # Try fetching history via yfinance
     df = pd.DataFrame()
     for sym in cfg["symbols"]:
         try:
@@ -270,7 +295,6 @@ def fetch_psx_stock_data(asset_key):
             'Volume': np.random.randint(100000, 2000000, 100)
         }, index=dates)
 
-    # Override latest close with zero-delay Official PSX Portal Scraper
     live_official = fetch_official_psx_live_price(asset_key)
     if live_official and live_official > 0:
         df.iloc[-1, df.columns.get_loc('Close')] = live_official
@@ -311,12 +335,13 @@ max_rupee_risk = total_capital * (risk_pct / 100)
 # ==========================================
 # 8. TABBED NAVIGATION
 # ==========================================
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📡 Live Execution Matrix", 
     "📈 Candlestick Studio",
     "🧮 Standalone Calculators", 
+    "📜 Calculation History",
     "🎓 Quant Academy & Formulas",
-    "📜 Regulatory Compliance"
+    "⚖️ Regulatory Compliance"
 ])
 
 # ------------------------------------------
@@ -477,6 +502,7 @@ with tab3:
     col1, col2 = st.columns(2)
     
     with col1:
+        # 1. Position Size Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("1. Dynamic Position Size Calculator")
         c_equity = st.number_input("Account Balance (PKR)", 10000, 50000000, 500000, step=25000, key="c_eq")
@@ -492,8 +518,12 @@ with tab3:
         st.markdown(f"**Max Permissible Loss:** Rs. {r_rupees:,.2f}")
         st.markdown(f"**Optimal Position Size:** `{recommended_shares:,}` Shares")
         st.markdown(f"**Total Capital Required:** Rs. {total_trade_val:,.2f}")
+        
+        if st.button("💾 Save Calculation to History", key="save_c1"):
+            log_calc("Position Size", f"Equity: {c_equity}, Risk: {c_risk_p}%, Entry: {c_entry}, SL: {c_sl}", f"Shares: {recommended_shares:,}, Total: Rs. {total_trade_val:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # 2. Risk-to-Reward Ratio Evaluator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("2. Risk-to-Reward Ratio (RRR) Evaluator")
         rrr_entry = st.number_input("Entry Price (PKR)", 1.0, 5000.0, 100.0, key="r_e")
@@ -511,8 +541,12 @@ with tab3:
             st.success(f"✅ Institutional Grade (1:2+ Target Met). Required Win-Rate: {breakeven_winrate:.1f}%")
         else:
             st.warning(f"⚠️ Sub-Optimal Trade Setup (Below 1:2 RRR). Required Win-Rate: {breakeven_winrate:.1f}%")
+            
+        if st.button("💾 Save Calculation to History", key="save_c2"):
+            log_calc("RRR Evaluator", f"Entry: {rrr_entry}, SL: {rrr_sl}, TP: {rrr_tp}", f"RRR: 1:{rrr_ratio:.2f}, Req WinRate: {breakeven_winrate:.1f}%")
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # 3. PSX Net Profit, Brokerage & Tax Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("3. PSX Net Profit, Brokerage & Tax Calculator")
         tx_buy_price = st.number_input("Buy Price (PKR)", 1.0, 5000.0, 100.0, key="tx_bp")
@@ -540,8 +574,12 @@ with tab3:
         st.markdown(f"**Brokerage Fees & Taxes:** Rs. {total_trading_costs:,.2f}")
         st.markdown(f"**Capital Gains Tax (CGT):** Rs. {cgt_tax:,.2f}")
         st.markdown(f"**Net Take-Home Profit:** <span style='color:#10B981; font-weight:bold;'>Rs. {final_take_home:,.2f}</span>", unsafe_allow_html=True)
+        
+        if st.button("💾 Save Calculation to History", key="save_c3"):
+            log_calc("PSX Net Profit & Tax", f"Buy: {tx_buy_price}, Sell: {tx_sell_price}, Qty: {tx_qty}, Status: {tx_filer}", f"Net Profit: Rs. {final_take_home:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # 4. DCA Average Price Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("4. Dollar-Cost Averaging (DCA) / Average Price")
         dca_p1 = st.number_input("Batch 1 Buy Price (PKR)", 1.0, 5000.0, 150.0, key="dca_p1")
@@ -556,9 +594,13 @@ with tab3:
         st.markdown(f"**Total Shares Held:** `{tot_qty:,}` Shares")
         st.markdown(f"**Total Capital Invested:** Rs. {tot_cost:,.2f}")
         st.markdown(f"**New Average Cost Basis:** <span style='color:#38BDF8; font-weight:bold;'>Rs. {avg_price:.2f} per share</span>", unsafe_allow_html=True)
+        
+        if st.button("💾 Save Calculation to History", key="save_c4"):
+            log_calc("DCA Average Price", f"Batch 1: {dca_q1} @ {dca_p1}, Batch 2: {dca_q2} @ {dca_p2}", f"Avg Price: Rs. {avg_price:.2f}, Total: Rs. {tot_cost:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
+        # 5. Benjamin Graham Intrinsic Value Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("5. Benjamin Graham Intrinsic Value Calculator")
         graham_eps = st.number_input("Earnings Per Share - EPS (PKR)", 0.1, 1000.0, 25.0, key="g_eps")
@@ -573,8 +615,12 @@ with tab3:
             st.success(f"✅ Undervalued by {margin_of_safety:.1f}% (Margin of Safety)")
         else:
             st.warning(f"⚠️ Overvalued by {abs(margin_of_safety):.1f}% relative to Graham Formula")
+            
+        if st.button("💾 Save Calculation to History", key="save_c5"):
+            log_calc("Graham Intrinsic Value", f"EPS: {graham_eps}, BVPS: {graham_bvps}, Mkt: {graham_mkt}", f"Fair Value: Rs. {intrinsic_value:.2f}, Margin: {margin_of_safety:.1f}%")
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # 6. Compound Growth & CAGR Calculator
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("6. Compound Growth & CAGR Calculator")
         cagr_init = st.number_input("Initial Principal (PKR)", 10000, 10000000, 100000, step=10000, key="cg_i")
@@ -586,8 +632,12 @@ with tab3:
         
         st.markdown(f"**Projected Portfolio Value:** <span style='color:#10B981; font-weight:bold;'>Rs. {future_val:,.2f}</span>", unsafe_allow_html=True)
         st.markdown(f"**Net Profit Generated:** Rs. {total_wealth_gain:,.2f}")
+        
+        if st.button("💾 Save Calculation to History", key="save_c6"):
+            log_calc("CAGR Compound Growth", f"Principal: {cagr_init}, Years: {cagr_years}, Rate: {cagr_rate}%", f"Future Value: Rs. {future_val:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # 7. PSX Daily Circuit Breaker Bands
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("7. PSX Daily Circuit Breaker Bands")
         prev_close_price = st.number_input("Previous Session Close Price (PKR)", 1.0, 5000.0, 400.0, key="cb_p")
@@ -599,8 +649,12 @@ with tab3:
         st.markdown(f"**Upper Circuit Limit (+7.5%):** <span style='color:#10B981; font-weight:bold;'>Rs. {upper_limit:.2f}</span>", unsafe_allow_html=True)
         st.markdown(f"**Lower Circuit Limit (-7.5%):** <span style='color:#EF4444; font-weight:bold;'>Rs. {lower_limit:.2f}</span>", unsafe_allow_html=True)
         st.markdown(f"**Auto-Lock Warning Threshold (+6.5%):** Rs. {warning_upper:.2f}")
+        
+        if st.button("💾 Save Calculation to History", key="save_c7"):
+            log_calc("PSX Circuit Breakers", f"Prev Close: {prev_close_price}", f"Upper: Rs. {upper_limit:.2f}, Lower: Rs. {lower_limit:.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # 8. Dividend Yield & Passive Income
         st.markdown('<div class="calc-box">', unsafe_allow_html=True)
         st.subheader("8. Dividend Yield & Passive Income")
         div_price = st.number_input("Current Share Price (PKR)", 1.0, 5000.0, 350.0, key="d_p")
@@ -612,12 +666,43 @@ with tab3:
         
         st.markdown(f"**Dividend Yield:** `{div_yield:.2f}%`")
         st.markdown(f"**Expected Annual Dividend Income:** <span style='color:#38BDF8; font-weight:bold;'>Rs. {total_payout:,.2f}</span>", unsafe_allow_html=True)
+        
+        if st.button("💾 Save Calculation to History", key="save_c8"):
+            log_calc("Dividend Yield", f"Price: {div_price}, Div: {div_annual}, Shares: {div_shares}", f"Yield: {div_yield:.2f}%, Income: Rs. {total_payout:,.2f}")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------
-# TAB 4: QUANT ACADEMY & FORMULAS
+# TAB 4: CALCULATION HISTORY
 # ------------------------------------------
 with tab4:
+    st.header("📜 Past Calculation History")
+    st.caption("Review your last 30 saved calculations. Clear history anytime at your own discretion.")
+    
+    col_h1, col_h2 = st.columns([6, 2])
+    with col_h2:
+        if st.button("🗑️ Clear All Calculation History", type="secondary", use_container_width=True):
+            clear_calc_history()
+            st.rerun()
+            
+    try:
+        conn = sqlite3.connect("trades.db")
+        history_df = pd.read_sql_query(
+            "SELECT timestamp AS 'Timestamp', calc_name AS 'Calculator Type', inputs_text AS 'Inputs Summary', result_text AS 'Calculation Output' FROM calc_history ORDER BY id DESC LIMIT 30", 
+            conn
+        )
+        conn.close()
+        
+        if history_df.empty:
+            st.info("No calculation history saved yet. Perform calculations in Tab 3 and click '💾 Save Calculation to History'.")
+        else:
+            st.dataframe(history_df, use_container_width=True, hide_index=True)
+    except Exception:
+        st.info("Calculation history table initializing...")
+
+# ------------------------------------------
+# TAB 5: QUANT ACADEMY & FORMULAS
+# ------------------------------------------
+with tab5:
     st.header("🎓 Quant Academy & Calculator Masterclass")
     st.caption("A complete guide explaining What, Why, and How each financial calculator works, including exact mathematical formulas and practical PSX trading examples.")
     
@@ -732,9 +817,9 @@ with tab4:
     """)
 
 # ------------------------------------------
-# TAB 5: SECP REGULATORY COMPLIANCE
+# TAB 6: SECP REGULATORY COMPLIANCE
 # ------------------------------------------
-with tab5:
+with tab6:
     st.header("📜 Securities & Regulatory Compliance Standards")
     st.markdown("""
     ### Securities and Exchange Commission of Pakistan (SECP) Alignment

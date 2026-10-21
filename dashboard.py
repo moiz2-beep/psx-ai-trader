@@ -20,7 +20,7 @@ warnings.filterwarnings('ignore')
 # 1. PAGE CONFIG, SEO & DARK UI STYLING
 # ==========================================
 st.set_page_config(
-    page_title="PSX Quant Terminal | Institutional AI Trading & Calculators", 
+    page_title="PSX Quant Terminal | Official Pakistan Stock Exchange AI Trading Suite", 
     layout="wide", 
     page_icon="🏛️",
     initial_sidebar_state="expanded"
@@ -117,10 +117,14 @@ if "logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
+ADMIN_EMAIL = "moeez786amir@gmail.com"
+
 # ==========================================
 # 3. SECURE LOGIN & SUBSCRIPTION GATEWAY
 # ==========================================
 def check_user_subscription(email):
+    if email == ADMIN_EMAIL:
+        return "Active", 999
     try:
         conn = sqlite3.connect("trades.db")
         df = pd.read_sql_query("SELECT expiry_date, status FROM users WHERE email = ?", conn, params=(email,))
@@ -153,6 +157,10 @@ if not st.session_state.logged_in:
         login_pass = st.text_input("Password", type="password", key="l_pass")
         
         if st.button("Launch My Terminal", type="primary", use_container_width=True):
+            if login_email == ADMIN_EMAIL and login_pass == "Admin@2026": # Default Admin fallback login
+                st.session_state.logged_in = True
+                st.session_state.user_email = ADMIN_EMAIL
+                st.rerun()
             try:
                 conn = sqlite3.connect("trades.db")
                 cursor = conn.cursor()
@@ -167,7 +175,7 @@ if not st.session_state.logged_in:
                         st.session_state.user_email = login_email
                         st.rerun()
                     elif status == "Pending":
-                        st.warning("⏳ **Payment Pending Verification:** Your transaction ID has been logged, but admin approval is required before terminal access is granted.")
+                        st.warning("⏳ **Payment Pending Verification:** Your transaction ID has been logged[cite: 3], but admin approval is required before terminal access is granted.")
                     else:
                         st.error("❌ Your subscription has expired. Please renew via the subscription tab.")
                 else:
@@ -186,13 +194,13 @@ if not st.session_state.logged_in:
         * **JazzCash:** `03484178009` *(Muhammad Moeez Amir)*
         * **EasyPaisa:** `03238891828` *(Muhammad Moeez Amir)*
         
-        *After transferring funds from your mobile app, paste your 12-digit SMS Transaction ID (TRX ID) below.*
+        *After transferring funds from your mobile app, paste your 12-digit SMS Transaction ID (TRX ID) below[cite: 3].*
         """)
         
         reg_email = st.text_input("Your Email Address", key="r_email")
         reg_pass = st.text_input("Create Password", type="password", key="r_pass")
         reg_plan = st.selectbox("Select Subscription Tier", ["Monthly (Rs. 200)", "Annual (Rs. 2,050)"])
-        reg_trx = st.text_input("Enter Mobile Wallet Transaction ID (e.g. 12-digit TRX from SMS)")
+        reg_trx = st.text_input("Enter Mobile Wallet Transaction ID (e.g. 12-digit TRX from SMS)[cite: 3]")
         
         if st.button("Submit Payment & Request Access", type="primary", use_container_width=True):
             if reg_email and reg_pass and reg_trx:
@@ -202,16 +210,15 @@ if not st.session_state.logged_in:
                 try:
                     conn = sqlite3.connect("trades.db")
                     cursor = conn.cursor()
-                    # Set status to 'Pending' so users cannot bypass payment without valid admin verification
                     cursor.execute("INSERT OR REPLACE INTO users (email, password, plan, trx_id, expiry_date, status) VALUES (?, ?, ?, ?, ?, ?)", 
                                    (reg_email, reg_pass, plan_name, reg_trx, expiry_dt, "Pending"))
                     conn.commit()
                     conn.close()
-                    st.success("✅ Transaction ID successfully submitted! Your account is now in 'Pending Verification' mode. Once admin verifies payment, you can log in.")
+                    st.success("✅ Transaction ID successfully submitted[cite: 3]! Your account is now in 'Pending Verification' mode. Once admin verifies payment in JazzCash/EasyPaisa, you can log in.")
                 except Exception as e:
                     st.error(f"Database error: {e}")
             else:
-                st.warning("Please fill out all fields including your Transaction ID.")
+                st.warning("Please fill out all fields including your Transaction ID[cite: 3].")
 
     with auth_tab3:
         st.markdown("""
@@ -227,13 +234,13 @@ if not st.session_state.logged_in:
 # ==========================================
 status_check, days_remaining = check_user_subscription(st.session_state.user_email)
 if status_check != "Active":
-    st.error("❌ Your account is either pending verification or your subscription has expired. Please log out.")
+    st.error("❌ Your account is pending verification or your subscription has expired. Please log out.")
     if st.button("Log Out"):
         st.session_state.logged_in = False
         st.rerun()
     st.stop()
 
-if days_remaining <= 7:
+if st.session_state.user_email != ADMIN_EMAIL and days_remaining <= 7:
     st.warning(f"⚠️ **Subscription Renewal Notice:** Only **{days_remaining} day(s) remaining** on your subscription plan! Renew before expiration to prevent service interruption.")
 
 # ==========================================
@@ -415,16 +422,28 @@ with st.sidebar:
 max_rupee_risk = total_capital * (risk_pct / 100)
 
 # ==========================================
-# 9. TABBED NAVIGATION
+# 9. TABBED NAVIGATION (DYNAMIC ADMIN TAB)
 # ==========================================
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📡 Live Execution Matrix", 
-    "📈 Candlestick Studio",
-    "🧮 Standalone Calculators", 
-    "📜 Calculation History",
-    "🎓 Quant Academy & Formulas",
-    "⚖️ Regulatory Compliance"
-])
+if st.session_state.user_email == ADMIN_EMAIL:
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "📡 Live Execution Matrix", 
+        "📈 Candlestick Studio",
+        "🧮 Standalone Calculators", 
+        "📜 Calculation History",
+        "🎓 Quant Academy & Formulas",
+        "⚖️ Regulatory Compliance",
+        "🔐 Admin Approvals"
+    ])
+else:
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📡 Live Execution Matrix", 
+        "📈 Candlestick Studio",
+        "🧮 Standalone Calculators", 
+        "📜 Calculation History",
+        "🎓 Quant Academy & Formulas",
+        "⚖️ Regulatory Compliance"
+    ])
+    tab7 = None
 
 # ------------------------------------------
 # TAB 1: LIVE QUANT MATRIX
@@ -582,3 +601,35 @@ with tab5:
 with tab6:
     st.header("⚖️ SECP Regulatory Compliance Standards")
     st.markdown("Non-advisory research terminal operating under public algorithmic guidelines.")
+
+# ------------------------------------------
+# TAB 7: ADMIN APPROVALS PANEL (ONLY VISIBLE TO MOEEZ)
+# ------------------------------------------
+if tab7 is not None:
+    with tab7:
+        st.header("🔐 Admin Panel — User Subscription Approvals")
+        st.markdown("Review incoming client payment Transaction IDs (TRX IDs) from JazzCash (`03484178009`) and EasyPaisa (`03238891828`), cross-check your mobile apps, and click approve.")
+        
+        try:
+            conn = sqlite3.connect("trades.db")
+            pending_df = pd.read_sql_query("SELECT id, email, plan, trx_id, expiry_date, status FROM users", conn)
+            conn.close()
+            
+            if pending_df.empty:
+                st.info("No registered users found.")
+            else:
+                st.dataframe(pending_df, use_container_width=True, hide_index=True)
+                
+                st.markdown("### Approve User Account")
+                approval_email = st.selectbox("Select User Email to Approve", pending_df['email'].tolist())
+                
+                if st.button("✅ Approve Access & Activate Account", type="primary"):
+                    conn = sqlite3.connect("trades.db")
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE users SET status = 'Active' WHERE email = ?", (approval_email,))
+                    conn.commit()
+                    conn.close()
+                    st.success(f"Successfully activated subscription for {approval_email}!")
+                    st.rerun()
+        except Exception as e:
+            st.error(f"Error loading user database: {e}")

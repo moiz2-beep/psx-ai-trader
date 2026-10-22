@@ -26,7 +26,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Professional SEO Meta Tags Injection for Google & Search Engines
 st.markdown("""
     <head>
         <title>PSX Quant Terminal | Official Pakistan Stock Exchange AI Trading Suite</title>
@@ -34,9 +33,6 @@ st.markdown("""
         <meta name="keywords" content="PSX Quant Terminal, Pakistan Stock Exchange AI, KSE-100 stock predictor, PSX trading software, FinBERT Pakistan, stock calculators Lahore">
         <meta name="author" content="Muhammad Moeez Amir">
         <meta name="robots" content="index, follow">
-        <meta property="og:title" content="PSX Quant Terminal">
-        <meta property="og:description" content="Institutional-grade quantitative analysis and risk management suite for PSX investors.">
-        <meta property="og:type" content="website">
     </head>
     <style>
     .stApp { background-color: #080A0F; color: #E2E8F0; font-family: 'Inter', -apple-system, sans-serif; }
@@ -54,7 +50,7 @@ st.markdown("""
         border: 1px solid #1E293B;
         padding: 20px;
         border-radius: 8px;
-        max-height: 300px;
+        max-height: 250px;
         overflow-y: scroll;
         font-size: 13px;
         color: #94A3B8;
@@ -77,8 +73,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 10-Second Fast Refresh for Live Exchange Sync
-st_autorefresh(interval=10000, key="psx_terminal_refresh")
+# Optimized Non-Disruptive Autorefresh (10 Seconds background price sync)
+st_autorefresh(interval=10000, key="psx_non_disruptive_refresh")
 
 # ==========================================
 # 2. DATABASE & SUBSCRIPTION ENGINE
@@ -117,11 +113,13 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
+if "terms_satisfied" not in st.session_state:
+    st.session_state.terms_satisfied = False
 
 ADMIN_EMAIL = "moeez786amir@gmail.com"
 
 # ==========================================
-# 3. SECURE LOGIN & SUBSCRIPTION GATEWAY
+# 3. AUTHENTICATION & PASSWORD RECOVERY GATEWAY
 # ==========================================
 def check_user_subscription(email):
     if email == ADMIN_EMAIL:
@@ -146,21 +144,22 @@ if not st.session_state.logged_in:
     st.markdown("""
         <div class="auth-card">
             <h2 style="color: #38BDF8; margin-top: 0;">🏛️ PSX Quant Terminal</h2>
-            <p style="color: #94A3B8; font-size: 14px;">Pakistan's Premier Institutional Quantitative Suite. Please log in or submit your subscription payment to unlock live trading terminals.</p>
+            <p style="color: #94A3B8; font-size: 14px;">Pakistan's Premier Institutional Quantitative Suite. Please log in, reset credentials, or purchase a subscription.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    auth_tab1, auth_tab2, auth_tab3 = st.tabs(["🔑 User Login", "💳 Buy Subscription & Accounts", "⚖️ Full Legal & Privacy Agreement"])
+    auth_tab1, auth_tab2, auth_tab3, auth_tab4 = st.tabs(["🔑 User Login", "💳 Buy Subscription", "🔄 Reset Password", "⚖️ Legal Terms"])
     
     with auth_tab1:
         st.subheader("Terminal Login")
         login_email = st.text_input("Registered Email", key="l_email")
         login_pass = st.text_input("Password", type="password", key="l_pass")
         
-        if st.button("Launch My Terminal", type="primary", use_container_width=True):
+        if st.button("Log In", type="primary", use_container_width=True):
             if login_email == ADMIN_EMAIL and login_pass == "Admin@2026":
                 st.session_state.logged_in = True
                 st.session_state.user_email = ADMIN_EMAIL
+                st.session_state.terms_satisfied = True # Admin auto-satisfies terms
                 st.rerun()
             try:
                 conn = sqlite3.connect("trades.db")
@@ -174,11 +173,12 @@ if not st.session_state.logged_in:
                     if status == "Active" and pd.to_datetime(expiry_dt) > pd.Timestamp.now():
                         st.session_state.logged_in = True
                         st.session_state.user_email = login_email
+                        st.session_state.terms_satisfied = False # Forces Terms Acceptance Gate post-login
                         st.rerun()
                     elif status == "Pending":
-                        st.warning("⏳ **Payment Pending Verification:** Your transaction ID has been logged, but admin approval is required before terminal access is granted.")
+                        st.warning("⏳ **Payment Pending Verification:** Your transaction ID has been logged, but admin approval is required before access is granted.")
                     else:
-                        st.error("❌ Your subscription has expired. Please renew via the subscription tab.")
+                        st.error("❌ Your subscription has expired. Please renew.")
                 else:
                     st.error("❌ Invalid email or password.")
             except Exception as e:
@@ -187,28 +187,20 @@ if not st.session_state.logged_in:
     with auth_tab2:
         st.subheader("Official Subscription Portal")
         st.markdown("""
-        Choose your subscription package and transfer the payment to our official mobile wallet accounts:
         * 🟢 **Monthly Access:** `Rs. 200 / month`
         * 🔵 **Annual Access:** `Rs. 2,050 / year`
         
         **Official Transfer Numbers:**
         * **JazzCash:** `03484178009` *(Muhammad Moeez Amir)*
         * **EasyPaisa:** `03238891828` *(Muhammad Moeez Amir)*
-        
-        *After transferring funds from your mobile app, paste your 12-digit SMS Transaction ID (TRX ID) below.*
         """)
-        
         reg_email = st.text_input("Your Email Address", key="r_email")
         reg_pass = st.text_input("Create Password", type="password", key="r_pass")
-        reg_plan = st.selectbox("Select Subscription Tier", ["Monthly (Rs. 200)", "Annual (Rs. 2,050)"])
-        reg_trx = st.text_input("Enter Mobile Wallet Transaction ID (e.g. 12-digit TRX from SMS)")
+        reg_plan = st.selectbox("Select Tier", ["Monthly (Rs. 200)", "Annual (Rs. 2,050)"])
+        reg_trx = st.text_input("Enter 12-digit Mobile Wallet TRX ID")
         
-        terms_accepted = st.checkbox("I have read, understood, and unconditionally agree to the PSX Quant Terminal Terms of Service, Privacy Policy, and SECP Risk Disclosure Agreement.")
-        
-        if st.button("Submit Payment & Request Access", type="primary", use_container_width=True):
-            if not terms_accepted:
-                st.error("❌ You must accept the Legal & Privacy Agreement checkboxes before registering.")
-            elif reg_email and reg_pass and reg_trx:
+        if st.button("Submit Payment Request", type="primary", use_container_width=True):
+            if reg_email and reg_pass and reg_trx:
                 days = 30 if "Monthly" in reg_plan else 365
                 expiry_dt = (datetime.datetime.now() + datetime.timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
                 plan_name = "Monthly" if "Monthly" in reg_plan else "Annual"
@@ -219,50 +211,87 @@ if not st.session_state.logged_in:
                                    (reg_email, reg_pass, plan_name, reg_trx, expiry_dt, "Pending"))
                     conn.commit()
                     conn.close()
-                    st.success("✅ Transaction ID successfully submitted! Your account is now in 'Pending Verification' mode. Once admin verifies payment in JazzCash/EasyPaisa, you can log in.")
+                    st.success("✅ Transaction ID successfully submitted! Pending admin verification.")
                 except Exception as e:
                     st.error(f"Database error: {e}")
             else:
-                st.warning("Please fill out all fields including your Transaction ID.")
+                st.warning("Please fill out all fields including your TRX ID.")
 
     with auth_tab3:
-        st.markdown("### 📜 Comprehensive Terms of Service, Privacy Policy & Regulatory Agreement")
-        st.markdown("""
-        <div class="legal-box">
-            <strong>1. Acceptance of Terms & Regulatory Status (SECP Guidelines)</strong><br>
-            By accessing or subscribing to PSX Quant Terminal ("the Platform"), operated by Muhammad Moeez Amir, you agree to be bound by these Terms of Service. The Platform is an independent quantitative analytical tool designed for educational, research, and technical evaluation purposes. It does not constitute formal investment advice, portfolio management, or brokerage services under Securities and Exchange Commission of Pakistan (SECP) regulations.<br><br>
-            
-            <strong>2. Nature of AI Models & Quantitative Signals</strong><br>
-            The Platform provides automated technical metrics, including FinBERT neural sentiment scoring, 50-day Simple Moving Average (SMA) evaluations, 14-day RSI oscillators, and ATR-based risk boundaries. Users acknowledge that machine learning models and historical data algorithms can experience lag, false breakouts, or erroneous outputs. Signals generated (such as 'AI BUY' or circuit breaker triggers) are purely algorithmic and should not be treated as direct financial directives.<br><br>
-            
-            <strong>3. Subscription, Payment Verification & Cancellation Policy</strong><br>
-            Subscriptions are billed on a recurring monthly (Rs. 200) or annual (Rs. 2,050) basis via manual mobile wallet transfers (JazzCash/EasyPaisa). Access is granted only after manual verification of the submitted Transaction ID (TRX ID). Subscription fees are strictly non-refundable once verified and activated. Accounts failing to renew prior to expiration will automatically face suspension of live trading metrics.<br><br>
-            
-            <strong>4. User Data Privacy & Security</strong><br>
-            We collect minimal necessary user data (email addresses, authentication credentials, and transaction references) stored securely in encrypted local databases (`trades.db`). We do not sell, trade, or distribute your personal information to third parties. Financial transactions are conducted entirely through external mobile wallet providers (JazzCash/EasyPaisa); we do not store your mobile PINs or wallet passwords.<br><br>
-            
-            <strong>5. Limitation of Liability & Risk Disclaimer</strong><br>
-            Equity trading on the Pakistan Stock Exchange (PSX) involves substantial risk of capital loss. You acknowledge that you utilize the Platform's position sizing, stop-loss calculators, and execution matrices entirely at your own risk. The developer and operators shall bear no liability for any direct or consequential financial losses incurred while using this software.
-        </div>
-        """, unsafe_allow_html=True)
+        st.subheader("🔄 Forgot Email or Password Recovery")
+        st.markdown("If you forgot your password, enter your registered email below and set a new secure password instantly.")
+        rec_email = st.text_input("Registered Email for Recovery", key="rec_email")
+        new_pass = st.text_input("New Secure Password", type="password", key="new_pass")
+        
+        if st.button("Reset Account Password", type="primary"):
+            try:
+                conn = sqlite3.connect("trades.db")
+                cursor = conn.cursor()
+                cursor.execute("SELECT email FROM users WHERE email = ?", (rec_email,))
+                if cursor.fetchone():
+                    cursor.execute("UPDATE users SET password = ? WHERE email = ?", (new_pass, rec_email))
+                    conn.commit()
+                    conn.close()
+                    st.success("✅ Password successfully updated! You can now log in with your new password.")
+                else:
+                    conn.close()
+                    st.error("❌ Email address not found in subscriber database.")
+            except Exception as e:
+                st.error(f"Recovery error: {e}")
+
+    with auth_tab4:
+        st.markdown("### ⚖️ Legal & Privacy Agreement Summary")
+        st.markdown("Independent quantitative terminal operating under public educational guidelines. Not financial advice.")
     st.stop()
 
 # ==========================================
-# 4. SUBSCRIPTION VERIFICATION & WARNINGS
+# 4. POST-LOGIN TERMS & CONDITIONS SATISFACTION GATE
+# ==========================================
+if not st.session_state.terms_satisfied:
+    st.markdown("""
+        <div class="auth-card" style="text-align: center;">
+            <h2 style="color: #F59E0B;">⚠️ Mandatory Terms & Conditions Gate</h2>
+            <p style="color: #94A3B8; font-size: 14px;">Before entering the live PSX Quant Terminal, you must review and formally satisfy all institutional compliance terms.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="legal-box" style="max-width: 700px; margin: 0 auto;">
+        <strong>1. Regulatory Scope (SECP Guidelines):</strong> PSX Quant Terminal is an analytical software suite designed for educational and research evaluation. It does not provide direct portfolio execution or certified brokerage advice.<br><br>
+        <strong>2. Algorithmic Risk:</strong> AI models, FinBERT sentiment scoring, and ATR risk calculations are probabilistic and can experience false triggers. You trade entirely at your own risk.<br><br>
+        <strong>3. Subscription Non-Refundability:</strong> Manual wallet subscription fees (Rs. 200/month or Rs. 2,050/year) are final and non-refundable once activated.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_t1, col_t2, col_t3 = st.columns([1, 2, 1])
+    with col_t2:
+        if st.button("✅ I Satisfy & Agree to Terms — Enter Terminal", type="primary", use_container_width=True):
+            st.session_state.terms_satisfied = True
+            st.rerun()
+        if st.button("❌ Decline & Log Out", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.terms_satisfied = False
+            st.rerun()
+    st.stop()
+
+# ==========================================
+# 5. SUBSCRIPTION VALIDATION & EXPIRY WARNINGS
 # ==========================================
 status_check, days_remaining = check_user_subscription(st.session_state.user_email)
 if status_check != "Active":
     st.error("❌ Your account is pending verification or your subscription has expired. Please log out.")
     if st.button("Log Out"):
         st.session_state.logged_in = False
+        st.session_state.terms_satisfied = False
         st.rerun()
     st.stop()
 
 if st.session_state.user_email != ADMIN_EMAIL and days_remaining <= 7:
-    st.warning(f"⚠️ **Subscription Renewal Notice:** Only **{days_remaining} day(s) remaining** on your subscription plan! Renew before expiration to prevent service interruption.")
+    st.warning(f"⚠️ **Subscription Renewal Notice:** Only **{days_remaining} day(s) remaining** on your subscription plan! Renew before expiration.")
 
 # ==========================================
-# 5. DATABASE LOGGING HELPERS
+# 6. DATABASE LOGGING HELPERS
 # ==========================================
 def log_signal(ticker, price, conf, cap, sl, tp, status):
     try:
@@ -294,7 +323,7 @@ def clear_calc_history():
         pass
 
 # ==========================================
-# 6. TECHNICAL & MATHEMATICAL ENGINES
+# 7. TECHNICAL & MATHEMATICAL ENGINES
 # ==========================================
 def compute_rsi(series, period=14):
     delta = series.diff()
@@ -308,7 +337,7 @@ def compute_atr(high, low, close, period=14):
     return tr.rolling(period).mean()
 
 # ==========================================
-# 7. DIRECT OFFICIAL PSX SCRAPER & AI ENGINE
+# 8. OFFICIAL PSX SCRAPER & AI ENGINE
 # ==========================================
 TICKER_CONFIG = {
     "MCB": {"symbols": ["MCB.KA", "MCB.KAR"], "base_price": 378.18},
@@ -416,13 +445,14 @@ def calculate_dynamic_ai_confidence(close_s, ma50, current_rsi, sent_score):
     return round(min(95.0, max(25.0, total_conf)), 1)
 
 # ==========================================
-# 8. SIDEBAR CONTROL PANEL
+# 9. SIDEBAR CONTROL PANEL
 # ==========================================
 with st.sidebar:
     st.title("🏛️ PSX Quant Terminal")
     st.caption(f"User: {st.session_state.user_email}")
     if st.button("🚪 Log Out", use_container_width=True):
         st.session_state.logged_in = False
+        st.session_state.terms_satisfied = False
         st.rerun()
         
     st.markdown("---")
@@ -430,17 +460,11 @@ with st.sidebar:
     total_capital = st.number_input("Account Equity (PKR)", 50000, 50000000, 500000, step=50000)
     risk_pct = st.slider("Max Account Risk per Trade (%)", 0.5, 5.0, 2.0, 0.5)
     min_conf = st.slider("Min AI Confidence Threshold (%)", 50, 95, 65)
-    
-    st.markdown("---")
-    st.markdown("### System Architecture:")
-    st.markdown("🟢 **Live Official PSX Scraper Feed**")
-    st.markdown("🟢 **FinBERT Neural NLP Engine**")
-    st.markdown("🟢 **Dynamic Multi-Factor AI**")
 
 max_rupee_risk = total_capital * (risk_pct / 100)
 
 # ==========================================
-# 9. TABBED NAVIGATION (DYNAMIC ADMIN TAB)
+# 10. TABBED NAVIGATION (DYNAMIC ADMIN TAB)
 # ==========================================
 if st.session_state.user_email == ADMIN_EMAIL:
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
@@ -572,7 +596,6 @@ with tab3:
         r_per_share = max(c_entry - c_sl, 0.01)
         r_rupees = c_equity * (c_risk_p / 100)
         recommended_shares = int(r_rupees / r_per_share)
-        total_trade_val = recommended_shares * c_entry
         st.markdown(f"**Max Permissible Loss:** Rs. {r_rupees:,.2f}")
         st.markdown(f"**Optimal Position Size:** `{recommended_shares:,}` Shares")
         if st.button("💾 Save Calculation to History", key="save_c1"):
@@ -620,11 +643,10 @@ with tab6:
     st.header("⚖️ SECP Regulatory & Privacy Compliance Agreement")
     st.markdown("""
     ### PSX Quant Terminal — Master Legal Agreement & Privacy Policy
-    
-    * **1. Regulatory Scope:** PSX Quant Terminal operates strictly as an analytical research software suite. In compliance with SECP guidelines regarding algorithmic tools, the platform does not manage discretionary funds, execute broker transactions directly, or provide certified investment advice.
-    * **2. AI Models & Data Sources:** Our algorithms combine live official PSX scraper feeds (`dps.psx.com.pk`), historical technical calculations (`yfinance`), and `ProsusAI/finbert` neural sentiment NLP models. Users acknowledge that algorithmic outputs represent probabilistic models and not guarantees of market performance.
-    * **3. Data Privacy Statement:** We respect user confidentiality. All data submitted (emails, authentication passwords, and transaction tracking IDs) is isolated inside encrypted local database instances. We never share, sell, or commercialize user data.
-    * **4. Subscription Policy:** Subscriptions are tied directly to manual mobile wallet verification (JazzCash `03484178009` / EasyPaisa `03238891828`). Fees are non-refundable once activated by the administration team.
+    * **1. Regulatory Scope:** PSX Quant Terminal operates strictly as an analytical research software suite under SECP guidelines.
+    * **2. AI Models & Data Sources:** Combines live official PSX scraper feeds (`dps.psx.com.pk`), historical technical calculations (`yfinance`), and `ProsusAI/finbert` neural sentiment NLP models.
+    * **3. Data Privacy Statement:** All user data submitted is isolated inside encrypted local database instances.
+    * **4. Subscription Policy:** Tied directly to manual mobile wallet verification (JazzCash `03484178009` / EasyPaisa `03238891828`).
     """)
 
 # ------------------------------------------

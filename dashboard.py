@@ -109,6 +109,15 @@ st.markdown("""
         font-size: 12px;
         margin: 12px 0;
     }
+    .example-question {
+        background: rgba(30, 41, 59, 0.5);
+        border-left: 3px solid #F59E0B;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin-top: 10px;
+        font-size: 12px;
+        color: #E2E8F0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -122,7 +131,6 @@ def save_to_history(calc_name, details):
     timestamp = datetime.datetime.now().strftime("%I:%M:%S %p")
     entry = {"Timestamp": timestamp, "Calculator": calc_name, "Details": details}
     st.session_state.calc_history.insert(0, entry)
-    # Maintain maximum of 20 calculations in history log
     if len(st.session_state.calc_history) > 20:
         st.session_state.calc_history.pop()
 
@@ -419,7 +427,6 @@ with tabs[1]:
 with tabs[2]:
     st.markdown("### 🧮 PSX Smart Calculator Suite (10 Models)")
     
-    # HISTORY EXPANDER AT TOP OF TAB 3
     with st.expander("📜 View Saved Calculation History (Last 20 Runs)", expanded=False):
         if st.session_state.calc_history:
             st.dataframe(pd.DataFrame(st.session_state.calc_history), use_container_width=True)
@@ -644,49 +651,162 @@ with tabs[2]:
 
 # --- TAB 4: QUANT ACADEMY ---
 with tabs[3]:
-    st.markdown("### 🎓 Quant Academy: 10 Core Financial Models")
+    st.markdown("### 🎓 Quant Academy: 10 Core Financial Models & Example Questions")
+    
+    # NEW GRAPH READING LESSON SECTION
+    st.markdown("""
+    <div class="fancy-card" style="border-left: 4px solid #10B981;">
+        <h3 style="color: #10B981; margin-top: 0;">📊 How to Read Candlestick Charts (Quick Guide & Example)</h3>
+        <p style="font-size: 13px; color: #CBD5E1; line-height: 1.6;">
+            A candlestick chart represents price movement over a specified period. Each candlestick shows four price points: 
+            <strong>Open (O)</strong>, <strong>High (H)</strong>, <strong>Low (L)</strong>, and <strong>Close (C)</strong>.
+        </p>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 10px;">
+            <div style="flex: 1; min-width: 250px; background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                <strong style="color: #10B981;">🟢 Green (Bullish) Candle:</strong><br>
+                <span style="font-size: 12px; color: #E2E8F0;">
+                • <strong>Close Price > Open Price</strong> (Price increased).<br>
+                • Upper Wick/Shadow = Highest price reached.<br>
+                • Lower Wick/Shadow = Lowest price reached.
+                </span>
+            </div>
+            <div style="flex: 1; min-width: 250px; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+                <strong style="color: #EF4444;">🔴 Red (Bearish) Candle:</strong><br>
+                <span style="font-size: 12px; color: #E2E8F0;">
+                • <strong>Close Price < Open Price</strong> (Price decreased).<br>
+                • Upper Wick/Shadow = Highest price reached.<br>
+                • Lower Wick/Shadow = Lowest price reached.
+                </span>
+            </div>
+        </div>
+        <div style="margin-top: 12px; font-size: 12px; color: #94A3B8;">
+            💡 <strong>Moving Average Line (Orange):</strong> Smooths out daily noise to show long-term trend direction. If the candles are trading <strong>above</strong> the line, the asset is in an <em>Uptrend</em>.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     q1, q2 = st.columns(2)
     
     with q1:
         st.markdown('<div class="fancy-card"><h4>1. Net P&L Model</h4>', unsafe_allow_html=True)
         st.latex(r"\text{Net P\&L} = (P_{\text{sell}} - P_{\text{buy}}) \times Q - \text{Charges}")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> You bought 1,000 shares of FFC at Rs. 500 and sold them at Rs. 550. If roundtrip broker commissions total Rs. 1,500, what is your Net Profit?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Gross Gain = (550 - 500) × 1,000 = Rs. 50,000<br>
+            Net Profit = 50,000 - 1,500 = <strong>Rs. 48,500 PKR</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('<div class="fancy-card"><h4>2. Position Sizing Model</h4>', unsafe_allow_html=True)
         st.latex(r"\text{Shares} = \frac{\text{Capital} \times \text{Risk \%}}{P_{\text{entry}} - P_{\text{stop\_loss}}}")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> Your account balance is Rs. 1,000,000 and you decide to risk 2% (Rs. 20,000). You enter LUCK at Rs. 400 with a stop-loss at Rs. 380. How many shares should you buy?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Risk Per Share = 400 - 380 = Rs. 20<br>
+            Shares = 20,000 / 20 = <strong>1,000 Shares</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="fancy-card"><h4>3. Risk / Reward Ratio</h4>', unsafe_allow_html=True)
         st.latex(r"\text{RRR} = \frac{P_{\text{target}} - P_{\text{entry}}}{P_{\text{entry}} - P_{\text{stop\_loss}}}")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> An entry in OGDC is made at Rs. 300 with a stop-loss at Rs. 290 and a profit target of Rs. 330. What is the Risk/Reward ratio?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Potential Gain = 330 - 300 = Rs. 30<br>
+            Potential Loss = 300 - 290 = Rs. 10<br>
+            RRR = 30 / 10 = <strong>1 : 3.0 (Excellent RRR)</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="fancy-card"><h4>4. Cost Basis Averaging</h4>', unsafe_allow_html=True)
         st.latex(r"\text{Avg Price} = \frac{(Q_1 \times P_1) + (Q_2 \times P_2)}{Q_1 + Q_2}")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> You hold 500 shares of HUBC bought at Rs. 200. You buy 500 additional shares at Rs. 180 during a market dip. What is your new average cost basis?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Total Cost = (500 × 200) + (500 × 180) = 100,000 + 90,000 = Rs. 190,000<br>
+            New Avg Price = 190,000 / 1,000 = <strong>Rs. 190.00 PKR</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="fancy-card"><h4>5. Allocation Weight</h4>', unsafe_allow_html=True)
         st.latex(r"\text{Weight \%} = \left( \frac{\text{Asset Value}}{\text{Portfolio Equity}} \right) \times 100")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> You hold Rs. 250,000 invested in MEBL within a total portfolio worth Rs. 1,000,000. What is MEBL's portfolio allocation weight?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Weight = (250,000 / 1,000,000) × 100 = <strong>25.0%</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with q2:
         st.markdown('<div class="fancy-card"><h4>6. Transaction Fees Model</h4>', unsafe_allow_html=True)
         st.latex(r"\text{Fees} = (\text{Trade Value} \times \text{Comm \%}) \times (1 + \text{Sales Tax \%})")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> You execute a trade valued at Rs. 500,000 with a broker commission rate of 0.15% and 13% provincial sales tax on commission. What is the execution fee?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Brokerage = 500,000 × 0.0015 = Rs. 750<br>
+            Tax = 750 × 0.13 = Rs. 97.50<br>
+            Total Fee = 750 + 97.50 = <strong>Rs. 847.50 PKR</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="fancy-card"><h4>7. Compound Growth (CAGR)</h4>', unsafe_allow_html=True)
         st.latex(r"\text{CAGR} = \left( \frac{\text{End Value}}{\text{Start Value}} \right)^{\frac{1}{n}} - 1")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> An initial investment of Rs. 100,000 grows to Rs. 200,000 over 5 years. What is the Compound Annual Growth Rate?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            CAGR = (200,000 / 100,000)^(1/5) - 1 = (2)^0.2 - 1 = <strong>14.87% per annum</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="fancy-card"><h4>8. Net Dividend Yield</h4>', unsafe_allow_html=True)
         st.latex(r"\text{Net Div} = (Q \times \text{DPS}) \times (1 - \text{WHT Rate})")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> You hold 2,000 shares of EFERT. The company announces a dividend of Rs. 10/share. As an active tax filer (15% withholding tax), what is your net payout?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Gross Dividend = 2,000 × 10 = Rs. 20,000<br>
+            Tax Withheld = 20,000 × 0.15 = Rs. 3,000<br>
+            Net Cash Received = 20,000 - 3,000 = <strong>Rs. 17,000 PKR</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="fancy-card"><h4>9. Break-Even Price</h4>', unsafe_allow_html=True)
         st.latex(r"P_{\text{breakeven}} = P_{\text{buy}} \times (1 + \text{Fee \%})")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> You buy SYS stock at Rs. 100 per share with total roundtrip trading charges equal to 0.40%. At what price do you break even?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Break-Even Price = 100 × (1 + 0.0040) = <strong>Rs. 100.40 PKR</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="fancy-card"><h4>10. Peak Drawdown</h4>', unsafe_allow_html=True)
         st.latex(r"\text{Drawdown \%} = \left( \frac{\text{Peak Value} - \text{Current Value}}{\text{Peak Value}} \right) \times 100")
+        st.markdown("""
+        <div class="example-question">
+            <strong>❓ Example Question:</strong> Your trading portfolio reached a historic high peak of Rs. 1,200,000 and subsequently dropped to Rs. 960,000. What is the peak drawdown percentage?<br><br>
+            <strong>✏️ Solution:</strong><br>
+            Drawdown Amount = 1,200,000 - 960,000 = Rs. 240,000<br>
+            Drawdown % = (240,000 / 1,200,000) × 100 = <strong>-20.0%</strong>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 # --- TAB 5: CHARTING STUDIO ---

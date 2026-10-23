@@ -265,7 +265,7 @@ with tabs[0]:
             "Sentiment": sent_label,
             "Confidence": f"{confidence:.1f}%",
             "Signal": signal,
-            "Target Allocation": f"Rs. {allocated:,-0f}" if allocated > 0 else "-"
+            "Target Allocation": f"Rs. {allocated:,.0f}" if allocated > 0 else "-"
         })
 
     st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
@@ -432,7 +432,7 @@ with tabs[2]:
             
             comm = brk_val * (brk_rate / 100)
             sales_tax = comm * (stax_rate / 100)
-            psx_cdc_fees = brk_val * 0.0003 # ~0.03% PSX/CDC/NCCPL charges
+            psx_cdc_fees = brk_val * 0.0003
             total_charges = comm + sales_tax + psx_cdc_fees
             
             st.markdown(f"""

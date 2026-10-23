@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ==========================================
-# 1. PAGE CONFIG & HIGH-END GLASSMORPHISM UI
+# 1. PAGE CONFIG & HIGH-END GLASS UI STYLING
 # ==========================================
 st.set_page_config(
     page_title="PSX Quant Terminal | Engr Moeez Amir", 
@@ -126,46 +126,34 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. MANDATORY LEGAL & SECP DISCLAIMER GATE
+# 2. STRICT LEGAL & DISCLAIMER GATE
 # ==========================================
 if "terms_accepted" not in st.session_state:
     st.session_state.terms_accepted = False
 
-if not st.session_state.terms_accepted:
-    st.markdown("""
-        <div style="max-width: 820px; margin: 40px auto; text-align: center;">
-            <div style="display: inline-block; padding: 6px 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; color: #10B981; font-size: 12px; font-weight: 700; margin-bottom: 15px;">
-                SECP NON-ADVISORY COMPLIANCE MANDATE
-            </div>
-            <h1 style="color: #F8FAFC; font-weight: 800; font-size: 2.8rem; margin-bottom: 5px;">⚡ PSX QUANT TERMINAL</h1>
-            <p style="color: #64748B; font-size: 15px; font-weight: 600;">Institutional Market Intelligence | Lead Developer: <span style="color: #38BDF8;">Engr Moeez Amir</span></p>
-            
-            <div class="fancy-card" style="text-align: left; margin-top: 25px; line-height: 1.8;">
-                <h3 style="color: #F59E0B; margin-top: 0; font-weight: 800;">⚠️ Mandatory Legal & Regulatory Disclaimer</h3>
-                
-                <p style="color: #94A3B8; font-size: 14px;">
-                    <strong style="color: #F8FAFC;">1. NON-FINANCIAL ADVISORY NOTICE:</strong><br>
-                    PSX Quant Terminal is strictly an educational research and quantitative market analysis software. It is <strong>NOT a certified investment advisory service</strong>, brokerage execution platform, or discretionary portfolio manager under SECP regulations.
-                </p>
-                
-                <p style="color: #94A3B8; font-size: 14px;">
-                    <strong style="color: #F8FAFC;">2. DEEP LEARNING & ALGORITHMIC PROBABILITY:</strong><br>
-                    All AI metrics, confidence scores, buy targets, stop-loss values, and take-profit thresholds are generated via mathematical algorithms (RSI momentum, SMA trend crossovers, ATR volatility). These outputs are probabilistic statistical models and do not guarantee future performance.
-                </p>
-                
-                <p style="color: #94A3B8; font-size: 14px;">
-                    <strong style="color: #F8FAFC;">3. SOLE CAPITAL RESPONSIBILITY:</strong><br>
-                    Trading in the Pakistan Stock Exchange involves substantial risk of loss. By entering this terminal, you explicitly agree that you are making independent investment decisions at your own risk.
-                </p>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+# Modal Dialog overlay to block terminal entry cleanly
+@st.dialog("⚠️ Mandatory SECP & Legal Compliance Notice", width="large")
+def show_disclaimer_modal():
+    st.write("### PSX Quant Terminal — Non-Advisory Notice")
+    st.caption("Lead Engineer: **Engr Moeez Amir**")
     
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        if st.button("✅ I Agree & Understand — Enter Terminal", type="primary", use_container_width=True):
-            st.session_state.terms_accepted = True
-            st.rerun()
+    st.warning("""
+    **1. NON-FINANCIAL ADVISORY NOTICE:**
+    PSX Quant Terminal is strictly an educational research and quantitative market analysis software. It is **NOT a certified investment advisory service**, brokerage execution platform, or discretionary portfolio manager under SECP regulations.
+    
+    **2. DEEP LEARNING & ALGORITHMIC PROBABILITY:**
+    All AI metrics, confidence scores, buy targets, stop-loss values, and take-profit thresholds are generated via mathematical algorithms (RSI momentum, SMA trend crossovers, ATR volatility). These outputs are probabilistic statistical models and do not guarantee future performance.
+    
+    **3. SOLE CAPITAL RESPONSIBILITY:**
+    Trading in the Pakistan Stock Exchange involves substantial risk of loss. By entering this terminal, you explicitly agree that you are making independent investment decisions at your own risk.
+    """)
+    
+    if st.button("✅ I Agree & Understand — Enter Terminal", type="primary", use_container_width=True):
+        st.session_state.terms_accepted = True
+        st.rerun()
+
+if not st.session_state.terms_accepted:
+    show_disclaimer_modal()
     st.stop()
 
 # ==========================================
@@ -229,7 +217,6 @@ def fetch_direct_psx_stock(symbol):
     except Exception:
         pass
 
-    # Dynamic Random Walk for technical variability
     np.random.seed(abs(hash(symbol)) % (2**32))
     dates = pd.date_range(end=pd.Timestamp.now(), periods=60, freq='D')
     returns = np.random.normal(0.0008, 0.018, 60)
@@ -317,20 +304,17 @@ with tabs[0]:
         ma20 = float(hist['Close'].rolling(min(20, len(hist))).mean().iloc[-1])
         ma50 = float(hist['Close'].rolling(min(50, len(hist))).mean().iloc[-1])
         
-        # Calculate RSI
         delta = hist['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(min(14, len(hist))).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(min(14, len(hist))).mean()
         rs = gain / (loss + 1e-9)
         rsi = float(100 - (100 / (1 + rs)).iloc[-1])
         
-        # Calculate ATR
         tr = np.maximum(hist['High'] - hist['Low'], np.maximum(abs(hist['High'] - hist['Close'].shift(1)), abs(hist['Low'] - hist['Close'].shift(1))))
         atr = float(tr.rolling(min(14, len(hist))).mean().iloc[-1])
         if np.isnan(atr) or atr == 0:
             atr = close * 0.025
 
-        # Dynamic Multi-Factor Scoring Model
         score = 50.0
         if close > ma20: score += 12.0
         if close > ma50: score += 13.0
@@ -402,7 +386,6 @@ with tabs[2]:
         "1. P&L & Position", "2. Risk & Exit", "3. Cost Basis & Charges", "4. Growth & Dividends", "5. Drawdown"
     ])
     
-    # Group 1: P&L & Position Sizing
     with c_tab1:
         col_a, col_b = st.columns(2)
         with col_a:
@@ -454,7 +437,6 @@ with tabs[2]:
             """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # Group 2: Risk & Exit Prices
     with c_tab2:
         col_c, col_d = st.columns(2)
         with col_c:
@@ -485,7 +467,6 @@ with tabs[2]:
             dd_peak = st.number_input("Previous Peak Value (PKR)", value=1200000, key="dd2")
             
             current_drawdown = ((dd_peak - dd_val) / dd_peak) * 100
-            drop_5 = dd_val * 0.95
             drop_10 = dd_val * 0.90
             drop_20 = dd_val * 0.80
             
@@ -498,7 +479,6 @@ with tabs[2]:
             """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # Group 3: Cost Basis & Charges
     with c_tab3:
         col_e, col_f = st.columns(2)
         with col_e:
@@ -543,7 +523,6 @@ with tabs[2]:
             """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # Group 4: Growth & Dividends
     with c_tab4:
         col_g, col_h = st.columns(2)
         with col_g:
@@ -586,7 +565,6 @@ with tabs[2]:
             """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # Group 5: Allocation & Break-Even
     with c_tab5:
         col_i, col_j = st.columns(2)
         with col_i:
@@ -714,7 +692,6 @@ with tabs[4]:
     try:
         sdf = fetch_direct_psx_stock(asst)
         
-        # Adaptive window for SMA to guarantee rendering on short historical series
         sma_window = min(20, max(2, len(sdf) - 1))
         sdf['SMA'] = sdf['Close'].rolling(sma_window).mean()
         

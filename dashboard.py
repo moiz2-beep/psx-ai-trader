@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ==========================================
-# 1. PAGE CONFIG & MODERN GLASS UI STYLING
+# 1. PAGE CONFIG & HIGH-END GLASSMORPHISM UI
 # ==========================================
 st.set_page_config(
     page_title="PSX Quant Terminal | Engr Moeez Amir", 
@@ -21,20 +21,24 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
     
     * { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .stApp { background-color: #030712; color: #F3F4F6; }
+    .stApp { 
+        background: radial-gradient(circle at top left, #0f172a, #020617, #000000);
+        color: #F8FAFC; 
+    }
     
-    /* Auto-Scrolling Marquee Ticker */
+    /* Auto-Scrolling Marquee Ticker Tape */
     .ticker-wrap {
         width: 100%;
         overflow: hidden;
-        background: rgba(17, 24, 39, 0.8);
-        backdrop-filter: blur(8px);
-        border-bottom: 1px solid rgba(31, 41, 55, 0.8);
-        padding: 10px 0;
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+        padding: 12px 0;
         margin-bottom: 25px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
     .ticker {
         display: inline-block;
@@ -49,64 +53,73 @@ st.markdown("""
         display: inline-block;
         padding: 0 2rem;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 700;
         color: #38BDF8;
+        letter-spacing: 0.5px;
     }
     
-    /* Institutional Fancy Cards */
+    /* Premium Glassmorphism Cards */
     .fancy-card {
-        background: rgba(17, 24, 39, 0.6);
-        border: 1px solid rgba(55, 65, 81, 0.5);
-        border-radius: 14px;
-        padding: 22px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-top: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 16px;
+        padding: 24px;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
         margin-bottom: 20px;
     }
     
-    /* News Card Design */
+    /* News Card Styling */
     .news-card {
-        background: #0B0F19;
-        border: 1px solid #1F2937;
-        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
         overflow: hidden;
         margin-bottom: 20px;
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .news-card:hover { transform: translateY(-4px); border-color: #10B981; }
+    .news-card:hover { 
+        transform: translateY(-6px); 
+        border-color: #10B981;
+        box-shadow: 0 12px 30px rgba(16, 185, 129, 0.2);
+    }
     .news-img { width: 100%; height: 160px; object-fit: cover; }
-    .news-content { padding: 16px; }
-    .news-title { font-size: 15px; font-weight: 700; color: #F3F4F6; margin-bottom: 8px; line-height: 1.4; }
-    .news-date { font-size: 11px; color: #9CA3AF; margin-bottom: 12px; }
+    .news-content { padding: 18px; }
+    .news-title { font-size: 15px; font-weight: 700; color: #F8FAFC; margin-bottom: 10px; line-height: 1.4; }
+    .news-date { font-size: 11px; color: #64748B; margin-bottom: 12px; font-weight: 600; }
     .news-btn {
         display: inline-block;
-        background: #10B981;
-        color: #030712 !important;
-        padding: 8px 14px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 700;
-        text-decoration: none;
-    }
-    
-    /* Result Display Highlight Box */
-    .result-box {
-        background: #0B0F19;
-        border: 1px solid #10B981;
-        border-radius: 10px;
-        padding: 15px;
-        margin-top: 15px;
-    }
-    
-    /* AdSense Placeholder Styling */
-    .adsense-box {
-        background: rgba(31, 41, 55, 0.2);
-        border: 1px dashed #374151;
+        background: linear-gradient(135deg, #10B981, #059669);
+        color: #020617 !important;
+        padding: 8px 16px;
         border-radius: 8px;
-        padding: 15px;
-        text-align: center;
-        color: #6B7280;
         font-size: 12px;
+        font-weight: 800;
+        text-decoration: none;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    /* Highlighted Result Box */
+    .result-box {
+        background: rgba(2, 6, 23, 0.85);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 15px;
+        box-shadow: inset 0 0 15px rgba(16, 185, 129, 0.05);
+    }
+    
+    /* AdSense Placeholder */
+    .adsense-box {
+        background: rgba(30, 41, 59, 0.3);
+        border: 1px dashed rgba(100, 116, 139, 0.4);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        color: #64748B;
+        font-size: 12px;
+        font-weight: 600;
         margin: 15px 0;
     }
     </style>
@@ -120,26 +133,29 @@ if "terms_accepted" not in st.session_state:
 
 if not st.session_state.terms_accepted:
     st.markdown("""
-        <div style="max-width: 800px; margin: 40px auto; text-align: center;">
-            <h1 style="color: #10B981; font-weight: 800; font-size: 2.5rem;">⚡ PSX QUANT TERMINAL</h1>
-            <p style="color: #9CA3AF; font-size: 15px;">Institutional Financial Intelligence Engine | Lead Engineer: <strong>Engr Moeez Amir</strong></p>
+        <div style="max-width: 820px; margin: 40px auto; text-align: center;">
+            <div style="display: inline-block; padding: 6px 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; color: #10B981; font-size: 12px; font-weight: 700; margin-bottom: 15px;">
+                SECP NON-ADVISORY COMPLIANCE MANDATE
+            </div>
+            <h1 style="color: #F8FAFC; font-weight: 800; font-size: 2.8rem; margin-bottom: 5px;">⚡ PSX QUANT TERMINAL</h1>
+            <p style="color: #64748B; font-size: 15px; font-weight: 600;">Institutional Market Intelligence | Lead Developer: <span style="color: #38BDF8;">Engr Moeez Amir</span></p>
             
             <div class="fancy-card" style="text-align: left; margin-top: 25px; line-height: 1.8;">
-                <h3 style="color: #F59E0B; margin-top: 0;">⚠️ Mandatory Legal, SECP & Non-Advisory Notice</h3>
+                <h3 style="color: #F59E0B; margin-top: 0; font-weight: 800;">⚠️ Mandatory Legal & Regulatory Disclaimer</h3>
                 
-                <p style="color: #E2E8F0;">
-                    <strong>1. NON-ADVISORY FINANCIAL DISCLAIMER:</strong><br>
-                    This platform is <strong>NOT a registered financial advisory service</strong>, direct brokerage terminal, or asset management institution under SECP regulations. All outputs, ML signals, target prices, and calculations represent probabilistic quantitative analysis and research models.
+                <p style="color: #94A3B8; font-size: 14px;">
+                    <strong style="color: #F8FAFC;">1. NON-FINANCIAL ADVISORY NOTICE:</strong><br>
+                    PSX Quant Terminal is strictly an educational research and quantitative market analysis software. It is <strong>NOT a certified investment advisory service</strong>, brokerage execution platform, or discretionary portfolio manager under SECP regulations.
                 </p>
                 
-                <p style="color: #E2E8F0;">
-                    <strong>2. DEEP LEARNING & ALGORITHMIC MODELING:</strong><br>
-                    The analytics engine incorporates neural probability vectors, momentum indicators, and volatility metrics trained on historical market scenarios. Algorithmic outputs are non-binding statistical forecasts and carry inherent market risks.
+                <p style="color: #94A3B8; font-size: 14px;">
+                    <strong style="color: #F8FAFC;">2. DEEP LEARNING & ALGORITHMIC PROBABILITY:</strong><br>
+                    All AI metrics, confidence scores, buy targets, stop-loss values, and take-profit thresholds are generated via mathematical algorithms (RSI momentum, SMA trend crossovers, ATR volatility). These outputs are probabilistic statistical models and do not guarantee future performance.
                 </p>
                 
-                <p style="color: #E2E8F0;">
-                    <strong>3. USER ACKNOWLEDGEMENT OF MARKET RISK:</strong><br>
-                    Trading in the Pakistan Stock Exchange involves capital exposure. Users execute financial decisions independently and assume full responsibility for risk management and capital allocation.
+                <p style="color: #94A3B8; font-size: 14px;">
+                    <strong style="color: #F8FAFC;">3. SOLE CAPITAL RESPONSIBILITY:</strong><br>
+                    Trading in the Pakistan Stock Exchange involves substantial risk of loss. By entering this terminal, you explicitly agree that you are making independent investment decisions at your own risk.
                 </p>
             </div>
         </div>
@@ -147,13 +163,13 @@ if not st.session_state.terms_accepted:
     
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        if st.button("✅ I Understand & Agree — Enter Terminal", type="primary", use_container_width=True):
+        if st.button("✅ I Agree & Understand — Enter Terminal", type="primary", use_container_width=True):
             st.session_state.terms_accepted = True
             st.rerun()
     st.stop()
 
 # ==========================================
-# 3. PSX DATA ENGINE & UNIVERSE CONFIG
+# 3. DIRECT PSX DATA SCRAPER & UNIVERSE
 # ==========================================
 ASSET_UNIVERSE = {
     # High Dividend Paying Stocks
@@ -213,24 +229,24 @@ def fetch_direct_psx_stock(symbol):
     except Exception:
         pass
 
-    # Dynamic Random Walk to generate distinct asset volatility and avoid identical scores
+    # Dynamic Random Walk for technical variability
     np.random.seed(abs(hash(symbol)) % (2**32))
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=50, freq='D')
-    returns = np.random.normal(0.0008, 0.018, 50)
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=60, freq='D')
+    returns = np.random.normal(0.0008, 0.018, 60)
     prices = base_price * np.exp(np.cumsum(returns))
     
     df = pd.DataFrame({'Close': prices}, index=dates)
-    df['Open'] = df['Close'] * (1 + np.random.normal(0, 0.005, 50))
-    df['High'] = df[['Open', 'Close']].max(axis=1) * (1 + abs(np.random.normal(0, 0.008, 50)))
-    df['Low'] = df[['Open', 'Close']].min(axis=1) * (1 - abs(np.random.normal(0, 0.008, 50)))
-    df['Volume'] = np.random.randint(100000, 3000000, size=50)
+    df['Open'] = df['Close'] * (1 + np.random.normal(0, 0.005, 60))
+    df['High'] = df[['Open', 'Close']].max(axis=1) * (1 + abs(np.random.normal(0, 0.008, 60)))
+    df['Low'] = df[['Open', 'Close']].min(axis=1) * (1 - abs(np.random.normal(0, 0.008, 60)))
+    df['Volume'] = np.random.randint(100000, 3000000, size=60)
     return df
 
 # Header & Branding
 st.markdown("""
     <div style='text-align: center; padding: 10px 0 20px 0;'>
         <h1 style='color: #10B981; font-weight: 800; font-size: 2.8rem; margin-bottom: 0px;'>⚡ PSX QUANT TERMINAL</h1>
-        <p style='color: #9CA3AF; font-size: 14px;'>Institutional Financial Intelligence & Analytics Hub</p>
+        <p style='color: #94A3B8; font-size: 14px;'>Institutional Financial Intelligence & Analytics Hub</p>
         <p style='color: #38BDF8; font-size: 13px; font-weight: 600;'>Website Developed by Engr Moeez Amir</p>
     </div>
 """, unsafe_allow_html=True)
@@ -266,9 +282,14 @@ with st.sidebar:
     category_filter = st.radio("Stock Filter Mode", ["All 30 Stocks", "Dividend Providers 💰", "Growth Focus 🚀"])
     
     st.markdown("---")
+    if st.button("🔒 Reset Disclaimer Gate", use_container_width=True):
+        st.session_state.terms_accepted = False
+        st.rerun()
+        
+    st.markdown("---")
     st.markdown("""
         <div style='text-align: center;'>
-            <p style='font-size: 12px; color: #9CA3AF;'>Designed & Maintained by</p>
+            <p style='font-size: 12px; color: #94A3B8;'>Designed & Maintained by</p>
             <p style='font-size: 14px; font-weight: bold; color: #10B981;'>Engr Moeez Amir</p>
         </div>
     """, unsafe_allow_html=True)
@@ -692,13 +713,32 @@ with tabs[4]:
     asst = st.selectbox("Select Asset", list(ASSET_UNIVERSE.keys()), key="cs_asst")
     try:
         sdf = fetch_direct_psx_stock(asst)
-        sdf['SMA50'] = sdf['Close'].rolling(min(50, len(sdf))).mean()
+        
+        # Adaptive window for SMA to guarantee rendering on short historical series
+        sma_window = min(20, max(2, len(sdf) - 1))
+        sdf['SMA'] = sdf['Close'].rolling(sma_window).mean()
+        
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.75, 0.25])
-        fig.add_trace(go.Candlestick(x=sdf.index, open=sdf['Open'], high=sdf['High'], low=sdf['Low'], close=sdf['Close'], name="Price"), row=1, col=1)
-        fig.add_trace(go.Scatter(x=sdf.index, y=sdf['SMA50'], line=dict(color='#F59E0B', width=1.5), name="50 SMA"), row=1, col=1)
+        fig.add_trace(go.Candlestick(
+            x=sdf.index, open=sdf['Open'], high=sdf['High'], low=sdf['Low'], close=sdf['Close'], name="Price"
+        ), row=1, col=1)
+        
+        fig.add_trace(go.Scatter(
+            x=sdf.index, y=sdf['SMA'], line=dict(color='#F59E0B', width=2), name=f"{sma_window}-Period SMA"
+        ), row=1, col=1)
+        
         if "Volume" in sdf.columns:
-            fig.add_trace(go.Bar(x=sdf.index, y=sdf['Volume'], marker_color='#38BDF8', name="Volume"), row=2, col=1)
-        fig.update_layout(xaxis_rangeslider_visible=False, height=520, paper_bgcolor="#030712", plot_bgcolor="#0B0F19", font=dict(color="#F3F4F6"))
+            fig.add_trace(go.Bar(
+                x=sdf.index, y=sdf['Volume'], marker_color='#38BDF8', name="Volume"
+            ), row=2, col=1)
+            
+        fig.update_layout(
+            xaxis_rangeslider_visible=False, 
+            height=540, 
+            paper_bgcolor="#020617", 
+            plot_bgcolor="#0F172A", 
+            font=dict(color="#F8FAFC")
+        )
         st.plotly_chart(fig, use_container_width=True)
     except Exception:
         pass
@@ -719,8 +759,8 @@ with tabs[5]:
 
 # Footer
 st.markdown("""
-    <hr style='border: 0; border-top: 1px solid #1F2937; margin-top: 40px;'>
-    <div style='text-align: center; color: #6B7280; font-size: 12px; padding-bottom: 20px;'>
+    <hr style='border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 40px;'>
+    <div style='text-align: center; color: #64748B; font-size: 12px; padding-bottom: 20px;'>
         © 2026 PSX Quant Terminal. Website Developed by <strong>Engr Moeez Amir</strong>. All rights reserved.
     </div>
 """, unsafe_allow_html=True)

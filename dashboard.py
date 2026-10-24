@@ -34,7 +34,6 @@ st.markdown("""
         color: #F8FAFC; 
     }
     
-    /* SEO Optimized Main Header */
     .main-header {
         text-align: center;
         padding: 25px;
@@ -54,7 +53,6 @@ st.markdown("""
     .header-subtitle { color: #94A3B8; font-size: 1.1rem; }
     .developer-badge { color: #38BDF8; font-size: 0.95rem; font-weight: 700; margin-top: 8px; }
     
-    /* Marquee Ticker Tape */
     .ticker-wrap {
         width: 100%; overflow: hidden; background: rgba(15, 23, 42, 0.85);
         backdrop-filter: blur(12px); border-bottom: 1px solid rgba(56, 189, 248, 0.25);
@@ -64,7 +62,6 @@ st.markdown("""
     @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     .ticker-item { display: inline-block; padding: 0 1.8rem; font-size: 13px; font-weight: 700; color: #38BDF8; }
     
-    /* Cards & Containers */
     .fancy-card {
         background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08);
         border-top: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px;
@@ -90,7 +87,7 @@ st.markdown("""
         border-radius: 10px; padding: 12px; text-align: center; color: #64748B; font-size: 12px; margin: 12px 0;
     }
     .example-question { background: rgba(30, 41, 59, 0.5); border-left: 3px solid #F59E0B; padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 10px; font-size: 12px; color: #E2E8F0; }
-    .stMetric { background-color: #1e293b; padding: 12px; border-radius: 8px; border: 1px solid #334155; }
+    .stMetric { background-color: #1e293b; padding: 8px; border-radius: 8px; border: 1px solid #334155; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -206,17 +203,19 @@ st.markdown("""
 
 st.info("🤝 **100% Free & Non-Profit Platform — Support Charity:** If you find value in this software, consider donating via **JazzCash: 03484178009**. Every donation goes to charity. *JazakAllah!*")
 
-# Bullion Banner
-st.markdown("### 🥇 Daily Bullion Rates & PSX Market Overview")
+# FIXED SPACING: Split into two clear rows so text never gets cut off or squeezed
+st.markdown("### 📊 PSX Market Indexing & Volume")
 kse_idx, kse_change, kse_pct, market_volume = fetch_kse_100_summary()
-b1, b2, b3, b4, b5 = st.columns(5)
-b1.metric("KSE-100 Index", f"{kse_idx:,.2f}", f"{kse_change:+.2f} ({kse_pct:+.2f}%)")
-b2.metric("Market Volume (Hujam)", f"{market_volume/1e6:.1f}M Shares")
-b3.metric("Gold 24K (Per Tola)", "PKR 414,704", "24K Pure")
-b4.metric("Gold 22K (Per Tola)", "PKR 380,146", "Jewelry Grade")
-b5.metric("Silver (1 Tola)", "PKR 5,930", "Fine 999")
+r1_c1, r1_c2 = st.columns(2)
+r1_c1.metric("KSE-100 Index", f"{kse_idx:,.2f}", f"{kse_change:+.2f} ({kse_pct:+.2f}%)")
+r1_c2.metric("Market Volume (Hujam)", f"{market_volume/1e6:.1f}M Shares")
 
-# Marquee
+st.markdown("### 🥇 Daily Local Bullion Rates (Per Tola)")
+r2_c1, r2_c2, r2_c3 = st.columns(3)
+r2_c1.metric("Gold 24K Pure", "PKR 414,704")
+r2_c2.metric("Gold 22K Jewelry", "PKR 380,146")
+r2_c3.metric("Silver / Chandi", "PKR 5,930")
+
 marquee_items = "".join([
     f"<div class='ticker-item'>{tkr} : Rs. {float(ALL_STOCKS_DATA[tkr]['Close'].iloc[-1]):.2f} "
     f"<span style='color: {'#10B981' if float(ALL_STOCKS_DATA[tkr]['Close'].iloc[-1]) >= float(ALL_STOCKS_DATA[tkr]['Close'].iloc[-2]) else '#EF4444'};'>"
@@ -277,7 +276,7 @@ with tabs[0]:
         delta = hist['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(min(14, len(hist))).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(min(14, len(hist))).mean()
-        rsi = float(100 - (100 / (1 + (gain / (loss + 1e-9))))).iloc[-1]
+        rsi = float((100 - (100 / (1 + (gain / (loss + 1e-9))))).iloc[-1])
         
         tr = np.maximum(hist['High'] - hist['Low'], np.maximum(abs(hist['High'] - hist['Close'].shift(1)), abs(hist['Low'] - hist['Close'].shift(1))))
         atr = float(tr.rolling(min(14, len(hist))).mean().iloc[-1]) if not np.isnan(float(tr.rolling(min(14, len(hist))).mean().iloc[-1])) else close * 0.025

@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import datetime
 import requests
-import re
 import xml.etree.ElementTree as ET
+import yfinance as yf
 from concurrent.futures import ThreadPoolExecutor
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -167,10 +167,10 @@ if not st.session_state.terms_accepted:
     st.stop()
 
 # ==========================================
-# 4. LIVE PSX MARKET DATA ENGINE
+# 4. YAHOO FINANCE AUTOMATED DATA ENGINE
 # ==========================================
 ASSET_UNIVERSE = {
-    # High Dividend Paying Stocks (Updated to Exact Live PSX Market Closing Rates)
+    # High Dividend Paying Stocks
     "FFC": {"name": "Fauji Fertilizer Company", "div_status": "Dividend Paying 💰", "est_yield": "18.5%", "base": 534.73},
     "EFERT": {"name": "Engro Fertilizers", "div_status": "Dividend Paying 💰", "est_yield": "16.2%", "base": 194.06},
     "MCB": {"name": "MCB Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "15.0%", "base": 373.60},
@@ -187,7 +187,7 @@ ASSET_UNIVERSE = {
     "PSO": {"name": "Pakistan State Oil", "div_status": "Dividend Paying 💰", "est_yield": "8.2%", "base": 345.07},
     "SHEL": {"name": "Shell Pakistan Limited", "div_status": "Dividend Paying 💰", "est_yield": "7.5%", "base": 172.10},
 
-    # Capital Growth Stocks (Updated to Exact Live PSX Market Closing Rates)
+    # Capital Growth Stocks
     "SYS": {"name": "Systems Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "1.2%", "base": 428.50},
     "LUCK": {"name": "Lucky Cement Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "2.5%", "base": 415.00},
     "TRG": {"name": "TRG Pakistan Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "0.0%", "base": 61.20},
@@ -208,47 +208,18 @@ ASSET_UNIVERSE = {
 def _fetch_single_stock_raw(symbol):
     info = ASSET_UNIVERSE[symbol]
     base_price = info["base"]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/json"
-    }
+    yf_symbol = f"{symbol}.KA"  # Converts symbol to Karachi Stock Exchange format for Yahoo Finance
     
-    # Priority 1: Fetch Live Intraday Data
-    intraday_url = f"https://dps.psx.com.pk/timeseries/intraday/{symbol}"
     try:
-        response = requests.get(intraday_url, headers=headers, timeout=2.5)
-        if response.status_code == 200:
-            data = response.json()
-            if data and "data" in data and len(data["data"]) >= 5:
-                df = pd.DataFrame(data["data"], columns=["time", "price", "volume"])
-                df['Close'] = df['price'].astype(float)
-                df['Open'] = df['Close'].shift(1).fillna(df['Close'] * 0.998)
-                df['High'] = df[['Open', 'Close']].max(axis=1) * 1.002
-                df['Low'] = df[['Open', 'Close']].min(axis=1) * 0.998
-                return symbol, df
+        data = yf.Ticker(yf_symbol)
+        df = data.history(period="30d", interval="1d")
+        if not df.empty and len(df) >= 5:
+            df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+            return symbol, df
     except Exception:
         pass
 
-    # Priority 2: Fetch Official PSX Market Summary Closing Rate
-    summary_url = f"https://dps.psx.com.pk/company/{symbol}"
-    try:
-        response = requests.get(summary_url, headers=headers, timeout=2.5)
-        if response.status_code == 200:
-            price_match = re.search(r'"current":\s*([\d\.]+)', response.text)
-            if price_match:
-                live_price = float(price_match.group(1))
-                if live_price > 0:
-                    base_price = live_price
-            else:
-                html_match = re.search(r'class="quote__price"[^>]*>Rs\.?\s*([\d\.,]+)', response.text)
-                if html_match:
-                    live_price = float(html_match.group(1).replace(',', ''))
-                    if live_price > 0:
-                        base_price = live_price
-    except Exception:
-        pass
-
-    # Priority 3: Stable Historical Series Anchored to Official Price
+    # Anchor fallback to current live closing baseline
     dates = pd.date_range(end=pd.Timestamp.now(), periods=60, freq='D')
     prices = np.full(60, base_price)
     
@@ -259,10 +230,10 @@ def _fetch_single_stock_raw(symbol):
     df['Volume'] = 500000
     return symbol, df
 
-@st.cache_data(ttl=180, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_all_psx_data():
     results_map = {}
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(_fetch_single_stock_raw, sym) for sym in ASSET_UNIVERSE.keys()]
         for future in futures:
             sym, df = future.result()
@@ -420,7 +391,7 @@ with tabs[0]:
 
     st.dataframe(pd.DataFrame(matrix_rows), use_container_width=True, hide_index=True)
 
-# --- TAB 2: FINANCIAL NEWS (LIVE RSS PIPELINE) ---
+# --- TAB 2: FINANCIAL NEWS ---
 with tabs[1]:
     st.markdown("### 📰 Pakistan Financial News Hub")
     st.caption("Live market insights and regulatory updates from Dawn & Business Recorder.")

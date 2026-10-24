@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import datetime
 import requests
+import re
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -165,19 +167,19 @@ if not st.session_state.terms_accepted:
     st.stop()
 
 # ==========================================
-# 4. HIGH-SPEED PARALLEL & CACHED DATA ENGINE
+# 4. HIGH-SPEED PARALLEL & LIVE DATA ENGINE
 # ==========================================
 ASSET_UNIVERSE = {
     # High Dividend Paying Stocks
-    "FFC": {"name": "Fauji Fertilizer Company", "div_status": "Dividend Paying 💰", "est_yield": "18.5%", "base": 534.73},
-    "EFERT": {"name": "Engro Fertilizers", "div_status": "Dividend Paying 💰", "est_yield": "16.2%", "base": 178.50},
-    "MCB": {"name": "MCB Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "15.0%", "base": 379.66},
-    "UBL": {"name": "United Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "16.8%", "base": 400.04},
-    "MEBL": {"name": "Meezan Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "12.4%", "base": 545.05},
-    "HUBC": {"name": "Hub Power Company", "div_status": "Dividend Paying 💰", "est_yield": "19.1%", "base": 232.19},
-    "OGDC": {"name": "Oil & Gas Development Co", "div_status": "Dividend Paying 💰", "est_yield": "11.5%", "base": 300.50},
-    "PPL": {"name": "Pakistan Petroleum Ltd", "div_status": "Dividend Paying 💰", "est_yield": "10.8%", "base": 214.20},
-    "ENGRO": {"name": "Engro Corporation", "div_status": "Dividend Paying 💰", "est_yield": "13.2%", "base": 266.34},
+    "FFC": {"name": "Fauji Fertilizer Company", "div_status": "Dividend Paying 💰", "est_yield": "18.5%", "base": 534.42},
+    "EFERT": {"name": "Engro Fertilizers", "div_status": "Dividend Paying 💰", "est_yield": "16.2%", "base": 193.50},
+    "MCB": {"name": "MCB Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "15.0%", "base": 248.10},
+    "UBL": {"name": "United Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "16.8%", "base": 296.97},
+    "MEBL": {"name": "Meezan Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "12.4%", "base": 245.80},
+    "HUBC": {"name": "Hub Power Company", "div_status": "Dividend Paying 💰", "est_yield": "19.1%", "base": 111.99},
+    "OGDC": {"name": "Oil & Gas Development Co", "div_status": "Dividend Paying 💰", "est_yield": "11.5%", "base": 146.33},
+    "PPL": {"name": "Pakistan Petroleum Ltd", "div_status": "Dividend Paying 💰", "est_yield": "10.8%", "base": 125.67},
+    "ENGRO": {"name": "Engro Holdings Limited", "div_status": "Dividend Paying 💰", "est_yield": "13.2%", "base": 245.46},
     "POL": {"name": "Pakistan Oilfields Ltd", "div_status": "Dividend Paying 💰", "est_yield": "14.5%", "base": 512.00},
     "BAHL": {"name": "Bank AL Habib Limited", "div_status": "Dividend Paying 💰", "est_yield": "14.2%", "base": 118.40},
     "HBL": {"name": "Habib Bank Limited", "div_status": "Dividend Paying 💰", "est_yield": "13.8%", "base": 142.10},
@@ -185,10 +187,10 @@ ASSET_UNIVERSE = {
     "PSO": {"name": "Pakistan State Oil", "div_status": "Dividend Paying 💰", "est_yield": "8.2%", "base": 215.30},
     "SHEL": {"name": "Shell Pakistan Limited", "div_status": "Dividend Paying 💰", "est_yield": "7.5%", "base": 165.00},
 
-    # Capital Growth & Non-Dividend Focus Stocks
-    "SYS": {"name": "Systems Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "1.2%", "base": 112.93},
+    # Capital Growth Stocks
+    "SYS": {"name": "Systems Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "1.2%", "base": 412.90},
     "LUCK": {"name": "Lucky Cement Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "2.5%", "base": 393.97},
-    "TRG": {"name": "TRG Pakistan Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "0.0%", "base": 68.40},
+    "TRG": {"name": "TRG Pakistan Limited", "div_status": "Growth / Capital Gain 🚀", "est_yield": "0.0%", "base": 57.30},
     "AIRLINK": {"name": "Air Link Communication", "div_status": "Growth / Capital Gain 🚀", "est_yield": "2.1%", "base": 124.50},
     "DGKC": {"name": "DG Khan Cement", "div_status": "Growth / Capital Gain 🚀", "est_yield": "1.8%", "base": 88.20},
     "SEARL": {"name": "The Searle Company", "div_status": "Growth / Capital Gain 🚀", "est_yield": "0.5%", "base": 62.10},
@@ -206,33 +208,47 @@ ASSET_UNIVERSE = {
 def _fetch_single_stock_raw(symbol):
     info = ASSET_UNIVERSE[symbol]
     base_price = info["base"]
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
-    url = f"https://dps.psx.com.pk/timeseries/intraday/{symbol}"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    
+    # Priority 1: Fetch Live Intraday Trades
+    intraday_url = f"https://dps.psx.com.pk/timeseries/intraday/{symbol}"
     try:
-        response = requests.get(url, headers=headers, timeout=1.5)
+        response = requests.get(intraday_url, headers=headers, timeout=1.8)
         if response.status_code == 200:
             data = response.json()
             if data and "data" in data and len(data["data"]) >= 5:
                 df = pd.DataFrame(data["data"], columns=["time", "price", "volume"])
                 df['Close'] = df['price'].astype(float)
                 df['Open'] = df['Close'].shift(1).fillna(df['Close'] * 0.998)
-                df['High'] = df[['Open', 'Close']].max(axis=1) * 1.003
-                df['Low'] = df[['Open', 'Close']].min(axis=1) * 0.997
+                df['High'] = df[['Open', 'Close']].max(axis=1) * 1.002
+                df['Low'] = df[['Open', 'Close']].min(axis=1) * 0.998
                 return symbol, df
     except Exception:
         pass
 
+    # Priority 2: Fetch Official PSX Market Summary (Closing Rate)
+    summary_url = f"https://dps.psx.com.pk/company/{symbol}"
+    try:
+        response = requests.get(summary_url, headers=headers, timeout=1.8)
+        if response.status_code == 200:
+            price_match = re.search(r'"current":\s*([\d\.]+)', response.text)
+            if price_match:
+                live_price = float(price_match.group(1))
+                if live_price > 0:
+                    base_price = live_price
+    except Exception:
+        pass
+
+    # Priority 3: Synthetic Series Anchored to Current Closing Price
     np.random.seed(abs(hash(symbol)) % (2**32))
     dates = pd.date_range(end=pd.Timestamp.now(), periods=60, freq='D')
-    returns = np.random.normal(0.0008, 0.018, 60)
+    returns = np.random.normal(0.0005, 0.015, 60)
     prices = base_price * np.exp(np.cumsum(returns))
     
     df = pd.DataFrame({'Close': prices}, index=dates)
-    df['Open'] = df['Close'] * (1 + np.random.normal(0, 0.005, 60))
-    df['High'] = df[['Open', 'Close']].max(axis=1) * (1 + abs(np.random.normal(0, 0.008, 60)))
-    df['Low'] = df[['Open', 'Close']].min(axis=1) * (1 - abs(np.random.normal(0, 0.008, 60)))
+    df['Open'] = df['Close'] * (1 + np.random.normal(0, 0.004, 60))
+    df['High'] = df[['Open', 'Close']].max(axis=1) * (1 + abs(np.random.normal(0, 0.006, 60)))
+    df['Low'] = df[['Open', 'Close']].min(axis=1) * (1 - abs(np.random.normal(0, 0.006, 60)))
     df['Volume'] = np.random.randint(100000, 3000000, size=60)
     return symbol, df
 
@@ -397,20 +413,50 @@ with tabs[0]:
 
     st.dataframe(pd.DataFrame(matrix_rows), use_container_width=True, hide_index=True)
 
-# --- TAB 2: FINANCIAL NEWS ---
+# --- TAB 2: FINANCIAL NEWS (LIVE RSS PIPELINE) ---
 with tabs[1]:
     st.markdown("### 📰 Pakistan Financial News Hub")
-    st.caption("Live market insights and regulatory updates.")
+    st.caption("Live market insights and regulatory updates from Dawn & Business Recorder.")
     
-    news_items = [
-        {"title": "State Bank Hints at Policy Rate Cut Amid Falling Inflation", "date": "10 Mins Ago", "url": "https://www.dawn.com/business", "img": "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=600&q=80"},
-        {"title": "PSX Surges Driven by Corporate Earnings and Inflows", "date": "1 Hour Ago", "url": "https://www.psx.com.pk", "img": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80"},
-        {"title": "IMF Approves Tranche: Rupee Stabilizes Against Foreign Currencies", "date": "3 Hours Ago", "url": "https://www.brecorder.com", "img": "https://images.unsplash.com/photo-1580519542036-ed47f3e42f9d?auto=format&fit=crop&w=600&q=80"},
-        {"title": "Energy Sector Reform Plan Finalized by Federal Cabinet", "date": "5 Hours Ago", "url": "https://www.tribune.com.pk/business", "img": "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80"},
-    ]
-    
+    @st.cache_data(ttl=600, show_spinner=False)
+    def fetch_live_financial_news():
+        feeds = [
+            ("https://www.dawn.com/feeds/business/", "Dawn Business"),
+            ("https://www.brecorder.com/feeds/latest-news/", "Business Recorder")
+        ]
+        items = []
+        headers = {"User-Agent": "Mozilla/5.0"}
+        
+        for feed_url, source in feeds:
+            try:
+                res = requests.get(feed_url, headers=headers, timeout=2.5)
+                if res.status_code == 200:
+                    root = ET.fromstring(res.content)
+                    for item in root.findall('.//item')[:4]:
+                        title = item.find('title').text if item.find('title') is not None else "Financial Market Update"
+                        link = item.find('link').text if item.find('link') is not None else "https://www.dawn.com/business"
+                        pub_date = item.find('pubDate').text[:16] if item.find('pubDate') is not None else "Latest"
+                        items.append({
+                            "title": title,
+                            "date": f"{source} • {pub_date}",
+                            "url": link,
+                            "img": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80"
+                        })
+            except Exception:
+                pass
+
+        if not items:
+            items = [
+                {"title": "State Bank Hints at Policy Rate Cut Amid Falling Inflation", "date": "Dawn • Recent", "url": "https://www.dawn.com/business", "img": "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=600&q=80"},
+                {"title": "PSX Surges Driven by Corporate Earnings and Inflows", "date": "PSX Portal", "url": "https://www.psx.com.pk", "img": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80"},
+                {"title": "IMF Approves Tranche: Rupee Stabilizes Against Foreign Currencies", "date": "BRecorder", "url": "https://www.brecorder.com", "img": "https://images.unsplash.com/photo-1580519542036-ed47f3e42f9d?auto=format&fit=crop&w=600&q=80"},
+                {"title": "Energy Sector Reform Plan Finalized by Federal Cabinet", "date": "Tribune", "url": "https://www.tribune.com.pk/business", "img": "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80"},
+            ]
+        return items[:4]
+
+    live_news = fetch_live_financial_news()
     cols = st.columns(4)
-    for idx, item in enumerate(news_items):
+    for idx, item in enumerate(live_news):
         with cols[idx % 4]:
             st.markdown(f"""
             <div class="news-card">
@@ -653,7 +699,6 @@ with tabs[2]:
 with tabs[3]:
     st.markdown("### 🎓 Quant Academy: 10 Core Financial Models & Example Questions")
     
-    # NEW GRAPH READING LESSON SECTION
     st.markdown("""
     <div class="fancy-card" style="border-left: 4px solid #10B981;">
         <h3 style="color: #10B981; margin-top: 0;">📊 How to Read Candlestick Charts (Quick Guide & Example)</h3>

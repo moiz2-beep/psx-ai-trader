@@ -8,3 +8,9 @@ plotly
 streamlit-autorefresh
 transformers
 torch
+streamlit
+pandas
+numpy
+requests
+plotly
+yfinance
